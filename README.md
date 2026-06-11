@@ -1,28 +1,53 @@
-# signer-server
-Server for web3 signer abstraction
+# Signer Service (NestJS)
+
+Remote signing service for Ocean Enterprise with Authentik JWT authentication.
+
+## Features
+- Ethereum transaction signing and sending
+- Authentik OIDC JWT authentication (Bearer token)
+- Swagger documentation at `/api`
+- Docker & docker-compose ready
+- Unit and e2e tests
 
 ## Setup
+1. Copy `.env.example` to `.env` and fill values
+2. Install dependencies: `npm install`
+3. Run dev: `npm run start:dev`
+4. Build: `npm run build`
+5. Run production: `npm run start:prod`
 
-```bash
+## Endpoints (all protected by JWT)
+- `GET /address`
+- `POST /sign-message`
+- `POST /send-transaction`
+- `GET /transaction/:hash`
+- `GET /nonce`
+
+## Testing
+- Unit: `npm test`
+- E2E: `npm run test:e2e`
+
+
+
+# Install dependencies
 npm install
-cp .env.example .env   # fill in your private key and RPC URL
-```
 
-## Run
+# Copy environment variables
+cp .env.example .env
+# Edit .env with your actual values (Ethereum private key, Authentik URIs)
 
-Terminal 1 — start the signer service:
-```bash
-npm run service
-```
+# Run in development
+npm run start:dev
 
-Terminal 2 — run the demo:
-```bash
-npm run demo
-```
+# Run unit tests
+npm test
 
-## Files
+# Run e2e tests (requires a valid JWT from Authentik, or modify guard to allow test mode)
+npm run test:e2e
 
-- `service.js` — Express backend, imports private key from env, uses ethers.Wallet
-- `remote-signer.js` — RemoteSigner class extending ethers.AbstractSigner, fetches from backend
-- `demo.js` — ocean.js Datatoken.approve() using RemoteSigner
+# Build and run production
+npm run build
+npm run start:prod
 
+# Docker
+docker-compose up --build
