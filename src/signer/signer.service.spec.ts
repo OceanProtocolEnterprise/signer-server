@@ -1,13 +1,46 @@
-jest.mock('ethers'); 
-
 import { Test, TestingModule } from '@nestjs/testing';
-import { SignerService } from './signer.service';
 import { ConfigService } from '@nestjs/config';
+
+const mockWait = jest.fn().mockResolvedValue({
+  blockNumber: 123,
+  gasUsed: 21000n,
+  status: 1,
+});
+
+const mockSendTransaction = jest.fn().mockResolvedValue({
+  hash: '0xtxhash',
+  from: '0xMockAddress',
+  to: '0xto',
+  nonce: 1,
+  wait: mockWait,
+});
+
+const mockWallet = {
+  address: '0xMockAddress',
+  signMessage: jest.fn().mockResolvedValue('0xsigned'),
+  sendTransaction: mockSendTransaction,
+};
+
+const mockProvider = {
+  getTransaction: jest.fn(),
+  getTransactionCount: jest.fn(),
+};
+
+jest.mock('ethers', () => ({
+  ethers: {
+    JsonRpcProvider: jest.fn(() => mockProvider),
+    Wallet: jest.fn(() => mockWallet),
+  },
+}));
+
+import { SignerService } from './signer.service';
 
 describe('SignerService', () => {
   let service: SignerService;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SignerService,
@@ -15,10 +48,19 @@ describe('SignerService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string) => {
-              if (key === 'ethereum.rpcUrl') return 'https://test.rpc';
-              if (key === 'ethereum.chainId') return 11155111;
-              if (key === 'ethereum.privateKey') return '0xtestkey';
-              return null;
+              switch (key) {
+                case 'ethereum.rpcUrl':
+                  return 'https://test.rpc';
+
+                case 'ethereum.chainId':
+                  return 11155111;
+
+                case 'ethereum.privateKey':
+                  return '0xtestkey';
+
+                default:
+                  return undefined;
+              }
             }),
           },
         },
@@ -26,6 +68,7 @@ describe('SignerService', () => {
     }).compile();
 
     service = module.get<SignerService>(SignerService);
+
     await service.onModuleInit();
   });
 
@@ -39,12 +82,26 @@ describe('SignerService', () => {
 
   it('should sign a message', async () => {
     const sig = await service.signMessage('hello');
+
     expect(sig).toBe('0xsigned');
+    expect(mockWallet.signMessage).toHaveBeenCalledWith('hello');
   });
 
   it('should send transaction', async () => {
-    const result = await service.sendTransaction('0xto', '100', '0xdata');
-    expect(result.hash).toBe('0xtxhash');
-    expect(result.blockNumber).toBe(123);
+    const result = await service.sendTransaction(
+      '0xto',
+      '100',
+      '0xdata',
+    );
+
+    expect(result).toEqual({
+      hash: '0xtxhash',
+      from: '0xMockAddress',
+      to: '0xto',
+      nonce: 1,
+      blockNumber: 123,
+      gasUsed: '21000',
+      status: 1,
+    });
   });
 });
