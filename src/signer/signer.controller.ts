@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus, NotFoundException } from '@nestjs/common';
+import { Req } from '@nestjs/common';
 import { SignerService } from './signer.service';
 import { SignMessageDto } from './dto/sign-message.dto';
 import { SendTransactionDto } from './dto/send-transaction.dto';
@@ -11,6 +12,7 @@ import {
   TransactionResponse,
   NonceResponse,
 } from './interfaces/signer-responses.interface';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('signer')
 @Controller()
@@ -18,6 +20,20 @@ import {
 @ApiBearerAuth()
 export class SignerController {
   constructor(private readonly signerService: SignerService) {}
+
+  @Get('health')
+  @Public()
+  health() {
+    return {
+        status: 'ok',
+        service: 'signer-service',
+    };
+  }
+
+  @Get('me')
+  getMe(@Req() req: any) {
+    return req.user;
+  } 
 
   @Get('address')
   @ApiOperation({ summary: 'Get signer wallet address' })

@@ -81,10 +81,12 @@ describe('SignerService', () => {
   });
 
   it('should sign a message', async () => {
-    const sig = await service.signMessage('hello');
+    const signature = await service.signMessage('hello');
 
-    expect(sig).toBe('0xsigned');
-    expect(mockWallet.signMessage).toHaveBeenCalledWith('hello');
+    expect(signature).toBe('0xsigned');
+    expect(mockWallet.signMessage).toHaveBeenCalledWith(
+      'hello',
+    );
   });
 
   it('should send transaction', async () => {
@@ -103,5 +105,67 @@ describe('SignerService', () => {
       gasUsed: '21000',
       status: 1,
     });
+  });
+
+  it('should get transaction', async () => {
+    mockProvider.getTransaction.mockResolvedValue({
+      hash: '0xhash',
+      from: '0xfrom',
+      to: '0xto',
+      value: 100n,
+      data: '0x',
+      nonce: 5,
+      blockNumber: 123,
+      blockHash: '0xblock',
+      chainId: 11155111n,
+    });
+
+    const tx = await service.getTransaction(
+      '0xhash',
+    );
+
+    expect(tx).toEqual({
+      hash: '0xhash',
+      from: '0xfrom',
+      to: '0xto',
+      value: '100',
+      data: '0x',
+      nonce: 5,
+      blockNumber: 123,
+      blockHash: '0xblock',
+      chainId: '11155111',
+    });
+
+    expect(
+      mockProvider.getTransaction,
+    ).toHaveBeenCalledWith('0xhash');
+  });
+
+  it('should return null when transaction is not found', async () => {
+    mockProvider.getTransaction.mockResolvedValue(
+      null,
+    );
+
+    const tx = await service.getTransaction(
+      '0xhash',
+    );
+
+    expect(tx).toBeNull();
+  });
+
+  it('should get nonce', async () => {
+    mockProvider.getTransactionCount.mockResolvedValue(
+      42,
+    );
+
+    const nonce = await service.getNonce();
+
+    expect(nonce).toBe(42);
+
+    expect(
+      mockProvider.getTransactionCount,
+    ).toHaveBeenCalledWith(
+      '0xMockAddress',
+    );
   });
 });
