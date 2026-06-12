@@ -1,8 +1,19 @@
+function parseNodeUriMap(): Record<string, string> {
+  const value = process.env.NODE_URI_MAP;
+  if (!value) {
+    return {};
+  }
+
+  const parsed = JSON.parse(value) as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.entries(parsed).map(([chainId, nodeUri]) => [chainId, String(nodeUri)]),
+  );
+}
+
 export default () => ({
-  ethereum: {
+  signer: {
     privateKey: process.env.PRIVATE_KEY,
-    rpcUrl: process.env.ETHEREUM_RPC_URL,
-    chainId: parseInt(process.env.CHAIN_ID || '11155111', 10),
+    nodeUriMap: parseNodeUriMap(),
   },
   authentik: {
     jwksUri: process.env.AUTHENTIK_JWKS_URI,

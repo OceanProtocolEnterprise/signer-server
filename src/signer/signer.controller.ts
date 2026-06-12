@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, HttpCode, HttpStatus, NotFoundException, ParseIntPipe } from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import { SignerService } from './signer.service';
 import { SignMessageDto } from './dto/sign-message.dto';
@@ -53,22 +53,25 @@ export class SignerController {
   @Post('send-transaction')
   @ApiOperation({ summary: 'Send a transaction' })
   async sendTransaction(@Body() dto: SendTransactionDto): Promise<SendTransactionResponse> {
-    const result = await this.signerService.sendTransaction(dto.to, dto.value, dto.data);
+    const result = await this.signerService.sendTransaction(dto.chainId, dto.to, dto.value, dto.data);
     return result;
   }
 
   @Get('transaction/:hash')
   @ApiOperation({ summary: 'Get transaction details' })
-  async getTransaction(@Param('hash') hash: string): Promise<TransactionResponse> {
-    const tx = await this.signerService.getTransaction(hash);
+  async getTransaction(
+    @Param('hash') hash: string,
+    @Query('chainId', ParseIntPipe) chainId: number,
+  ): Promise<TransactionResponse> {
+    const tx = await this.signerService.getTransaction(chainId, hash);
     if (!tx) throw new NotFoundException('Transaction not found');
     return tx;
   }
 
   @Get('nonce')
   @ApiOperation({ summary: 'Get current nonce of the signer wallet' })
-  async getNonce(): Promise<NonceResponse> {
-    const nonce = await this.signerService.getNonce();
+  async getNonce(@Query('chainId', ParseIntPipe) chainId: number): Promise<NonceResponse> {
+    const nonce = await this.signerService.getNonce(chainId);
     return { nonce };
   }
 }

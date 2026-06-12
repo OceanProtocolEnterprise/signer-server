@@ -19,6 +19,7 @@ const mockWallet = {
   address: '0xMockAddress',
   signMessage: jest.fn().mockResolvedValue('0xsigned'),
   sendTransaction: mockSendTransaction,
+  connect: jest.fn(),
 };
 
 const mockProvider = {
@@ -40,6 +41,7 @@ describe('SignerService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockWallet.connect.mockReturnValue(mockWallet);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -49,14 +51,14 @@ describe('SignerService', () => {
           useValue: {
             get: jest.fn((key: string) => {
               switch (key) {
-                case 'ethereum.rpcUrl':
-                  return 'https://test.rpc';
-
-                case 'ethereum.chainId':
-                  return 11155111;
-
-                case 'ethereum.privateKey':
+                case 'signer.privateKey':
                   return '0xtestkey';
+
+                case 'signer.nodeUriMap':
+                  return {
+                    '11155111': 'https://test.rpc',
+                    '11155420': 'https://test.optimism.rpc',
+                  };
 
                 default:
                   return undefined;
@@ -91,6 +93,7 @@ describe('SignerService', () => {
 
   it('should send transaction', async () => {
     const result = await service.sendTransaction(
+      11155111,
       '0xto',
       '100',
       '0xdata',
@@ -104,6 +107,12 @@ describe('SignerService', () => {
       blockNumber: 123,
       gasUsed: '21000',
       status: 1,
+    });
+    expect(mockWallet.connect).toHaveBeenCalledWith(mockProvider);
+    expect(mockSendTransaction).toHaveBeenCalledWith({
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
     });
   });
 
@@ -121,6 +130,7 @@ describe('SignerService', () => {
     });
 
     const tx = await service.getTransaction(
+      11155111,
       '0xhash',
     );
 
@@ -147,6 +157,7 @@ describe('SignerService', () => {
     );
 
     const tx = await service.getTransaction(
+      11155111,
       '0xhash',
     );
 
@@ -158,7 +169,7 @@ describe('SignerService', () => {
       42,
     );
 
-    const nonce = await service.getNonce();
+    const nonce = await service.getNonce(11155111);
 
     expect(nonce).toBe(42);
 
@@ -166,6 +177,12 @@ describe('SignerService', () => {
       mockProvider.getTransactionCount,
     ).toHaveBeenCalledWith(
       '0xMockAddress',
+    );
+  });
+
+  it('should throw when chain ID has no configured node URI', async () => {
+    await expect(service.getNonce(1)).rejects.toThrow(
+      'No node URI configured for chain ID 1',
     );
   });
 });

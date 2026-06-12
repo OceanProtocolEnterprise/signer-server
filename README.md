@@ -3,7 +3,7 @@
 Remote signing service for Ocean Enterprise with Authentik JWT authentication.
 
 ## Features
-- Ethereum transaction signing and sending
+- Transaction signing and sending across configured networks
 - Authentik OIDC JWT authentication (Bearer token)
 - Swagger documentation at `/api`
 - Docker & docker-compose ready
@@ -34,7 +34,7 @@ npm install
 
 # Copy environment variables
 cp .env.example .env
-# Edit .env with your actual values (Ethereum private key, Authentik URIs)
+# Edit .env with your actual values (private key, node URI map, Authentik URIs)
 
 # Run in development
 npm run start:dev
