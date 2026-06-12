@@ -6,10 +6,7 @@ class EnvironmentVariables {
   PRIVATE_KEY: string;
 
   @IsString()
-  ETHEREUM_RPC_URL: string;
-
-  @IsNumber()
-  CHAIN_ID: number;
+  NODE_URI_MAP: string;
 
   @IsString()
   AUTHENTIK_JWKS_URI: string;
