@@ -43,6 +43,14 @@ jobs:
 
       - name: E2E Tests
         run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
+          AUTHENTIK_JWKS_URI: ${{ variables.AUTHENTIK_JWKS_URI }}
+          AUTHENTIK_ISSUER: ${{ variables.AUTHENTIK_ISSUER }}
+          AUTHENTIK_AUDIENCE: ${{ variables.AUTHENTIK_AUDIENCE }}
+          PORT: 3001
 
       - name: Coverage
         run: npm run test:cov
