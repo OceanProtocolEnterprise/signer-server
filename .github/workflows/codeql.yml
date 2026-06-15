@@ -8,9 +8,6 @@ on:
       - feat/**
 
   pull_request:
-    branches:
-      - main
-      - feat/**
 
   schedule:
     - cron: "0 3 * * 1"
