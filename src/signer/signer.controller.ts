@@ -1,10 +1,28 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, HttpCode, HttpStatus, NotFoundException, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import { SignerService } from './signer.service';
 import { SignMessageDto } from './dto/sign-message.dto';
 import { SendTransactionDto } from './dto/send-transaction.dto';
 import { AuthentikGuard } from '../common/guards/authentik.guard';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   AddressResponse,
   SignMessageResponse,
@@ -25,35 +43,49 @@ export class SignerController {
   @Public()
   health() {
     return {
-        status: 'ok',
-        service: 'signer-service',
+      status: 'ok',
+      service: 'signer-service',
     };
   }
 
   @Get('me')
   getMe(@Req() req: any) {
     return req.user;
-  } 
+  }
 
   @Get('address')
   @ApiOperation({ summary: 'Get signer wallet address' })
-  @ApiResponse({ status: 200, type: Object })
-  getAddress(): AddressResponse {
-    return { address: this.signerService.getAddress() };
+  @ApiResponse({ status: 200, type: AddressResponse })
+  getAddress(
+    @Query('signerId', new DefaultValuePipe(1), ParseIntPipe) signerId: number,
+  ): AddressResponse {
+    return this.signerService.getAddress(signerId);
   }
 
   @Post('sign-message')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign a message' })
   async signMessage(@Body() dto: SignMessageDto): Promise<SignMessageResponse> {
-    const signature = await this.signerService.signMessage(dto.message);
-    return { signature, address: this.signerService.getAddress() };
+    const signer = this.signerService.getAddress(dto.signerId);
+    const signature = await this.signerService.signMessage(
+      dto.message,
+      dto.signerId,
+    );
+    return { signature, ...signer };
   }
 
   @Post('send-transaction')
   @ApiOperation({ summary: 'Send a transaction' })
-  async sendTransaction(@Body() dto: SendTransactionDto): Promise<SendTransactionResponse> {
-    const result = await this.signerService.sendTransaction(dto.chainId, dto.to, dto.value, dto.data);
+  async sendTransaction(
+    @Body() dto: SendTransactionDto,
+  ): Promise<SendTransactionResponse> {
+    const result = await this.signerService.sendTransaction(
+      dto.chainId,
+      dto.to,
+      dto.value,
+      dto.data,
+      dto.signerId,
+    );
     return result;
   }
 
@@ -70,8 +102,11 @@ export class SignerController {
 
   @Get('nonce')
   @ApiOperation({ summary: 'Get current nonce of the signer wallet' })
-  async getNonce(@Query('chainId', ParseIntPipe) chainId: number): Promise<NonceResponse> {
-    const nonce = await this.signerService.getNonce(chainId);
+  async getNonce(
+    @Query('chainId', ParseIntPipe) chainId: number,
+    @Query('signerId', new DefaultValuePipe(1), ParseIntPipe) signerId: number,
+  ): Promise<NonceResponse> {
+    const nonce = await this.signerService.getNonce(chainId, signerId);
     return { nonce };
   }
 }

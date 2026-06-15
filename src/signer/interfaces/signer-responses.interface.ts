@@ -3,12 +3,16 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class AddressResponse {
   @ApiProperty()
+  signerId: number;
+  @ApiProperty()
   address: string;
 }
 
 export class SignMessageResponse {
   @ApiProperty()
   signature: string;
+  @ApiProperty()
+  signerId: number;
   @ApiProperty()
   address: string;
 }
@@ -19,15 +23,15 @@ export class SendTransactionResult {
   @ApiProperty()
   from: string;
   @ApiProperty({ nullable: true })
-  to: string | null;   
+  to: string | null;
   @ApiProperty()
   nonce: number;
   @ApiProperty()
   blockNumber: number;
   @ApiProperty()
   gasUsed: string;
-  @ApiProperty({ nullable: true })   
-  status: number | null; 
+  @ApiProperty({ nullable: true })
+  status: number | null;
 }
 export type SendTransactionResponse = SendTransactionResult;
 
