@@ -43,7 +43,7 @@ jobs:
         run: npm run test:e2e
         env:
           NODE_ENV: test
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEYS: ${{ secrets.PRIVATE_KEY }}
           NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
           AUTHENTIK_JWKS_URI: ${{ vars.AUTHENTIK_JWKS_URI }}
           AUTHENTIK_ISSUER: ${{ vars.AUTHENTIK_ISSUER }}
