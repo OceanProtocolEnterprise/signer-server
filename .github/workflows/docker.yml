@@ -2,9 +2,13 @@ name: Docker
 
 on:
   pull_request:
+    branches:
+      - main
+      - feat/**
   push:
     branches:
       - main
+      - feat/**
 
 jobs:
   docker-build:
