@@ -18,6 +18,7 @@ export class SignerService implements OnModuleInit {
   private nodeUriMap: Record<string, string>;
   private providers = new Map<number, ethers.JsonRpcProvider>();
   private signers = new Map<number, ManagedSigner>();
+  private defaultWalletId: number;
 
   constructor(
     private configService: ConfigService,
@@ -38,8 +39,9 @@ export class SignerService implements OnModuleInit {
 
     this.nodeUriMap = nodeUriMap;
     this.signers = this.signerFactory.createSigners(privateKeys);
-    this.signers.forEach(({ id, address }) => {
-      this.logger.log(`Signer ${id} initialized with address: ${address}`);
+    this.defaultWalletId = privateKeys[0].walletId;
+    this.signers.forEach(({ walletId, address }) => {
+      this.logger.log(`Wallet ${walletId} initialized with address: ${address}`);
     });
   }
 
@@ -62,27 +64,27 @@ export class SignerService implements OnModuleInit {
     return provider;
   }
 
-  private getSigner(signerId = 1): ManagedSigner {
-    const signer = this.signers.get(signerId);
+  private getSigner(walletId = this.defaultWalletId): ManagedSigner {
+    const signer = this.signers.get(walletId);
     if (!signer) {
-      throw new Error(`No signer configured for id ${signerId}`);
+      throw new Error(`No wallet configured for id ${walletId}`);
     }
     return signer;
   }
 
-  getAddress(signerId = 1): {
-    signerId: number;
+  getAddress(walletId?: number): {
+    walletId: number;
     address: string;
   } {
-    const signer = this.getSigner(signerId);
+    const signer = this.getSigner(walletId);
     return {
-      signerId: signer.id,
+      walletId: signer.walletId,
       address: signer.address,
     };
   }
 
-  async signMessage(message: string, signerId = 1): Promise<string> {
-    return this.getSigner(signerId).signer.signMessage(message);
+  async signMessage(message: string, walletId?: number): Promise<string> {
+    return this.getSigner(walletId).signer.signMessage(message);
   }
 
   async sendTransaction(
@@ -90,9 +92,9 @@ export class SignerService implements OnModuleInit {
     to: string,
     value: string = '0',
     data: string = '0x',
-    signerId = 1,
+    walletId?: number,
   ): Promise<SendTransactionResult> {
-    const tx = await this.getSigner(signerId)
+    const tx = await this.getSigner(walletId)
       .signer.connect(this.getProvider(chainId))
       .sendTransaction({
         to,
@@ -131,9 +133,9 @@ export class SignerService implements OnModuleInit {
     };
   }
 
-  async getNonce(chainId: number, signerId = 1): Promise<number> {
+  async getNonce(chainId: number, walletId?: number): Promise<number> {
     return this.getProvider(chainId).getTransactionCount(
-      this.getSigner(signerId).address,
+      this.getSigner(walletId).address,
     );
   }
 }

@@ -64,11 +64,11 @@ describe('SignerService', () => {
                 case 'signer.privateKeys':
                   return [
                     {
-                      id: 1,
+                      walletId: 10,
                       key: `0x${'1'.repeat(64)}`,
                     },
                     {
-                      id: 2,
+                      walletId: 20,
                       key: `0x${'2'.repeat(64)}`,
                     },
                   ];
@@ -99,14 +99,14 @@ describe('SignerService', () => {
 
   it('should return address', () => {
     expect(service.getAddress()).toEqual({
-      signerId: 1,
+      walletId: 10,
       address: '0xMockAddress1',
     });
   });
 
-  it('should return address for selected signer', () => {
-    expect(service.getAddress(2)).toEqual({
-      signerId: 2,
+  it('should return address for selected wallet', () => {
+    expect(service.getAddress(20)).toEqual({
+      walletId: 20,
       address: '0xMockAddress2',
     });
   });
@@ -120,8 +120,8 @@ describe('SignerService', () => {
     ).toHaveBeenCalledWith('hello');
   });
 
-  it('should sign a message with selected signer', async () => {
-    const signature = await service.signMessage('hello', 2);
+  it('should sign a message with selected wallet', async () => {
+    const signature = await service.signMessage('hello', 20);
 
     expect(signature).toBe('0xsigned2');
     expect(
@@ -156,8 +156,8 @@ describe('SignerService', () => {
     });
   });
 
-  it('should send transaction with selected signer', async () => {
-    await service.sendTransaction(11155111, '0xto', '100', '0xdata', 2);
+  it('should send transaction with selected wallet', async () => {
+    await service.sendTransaction(11155111, '0xto', '100', '0xdata', 20);
 
     expect(mockWallets.get(`0x${'2'.repeat(64)}`).connect).toHaveBeenCalledWith(
       mockProvider,
@@ -214,10 +214,10 @@ describe('SignerService', () => {
     );
   });
 
-  it('should get nonce for selected signer', async () => {
+  it('should get nonce for selected wallet', async () => {
     mockProvider.getTransactionCount.mockResolvedValue(24);
 
-    const nonce = await service.getNonce(11155111, 2);
+    const nonce = await service.getNonce(11155111, 20);
 
     expect(nonce).toBe(24);
 
@@ -232,9 +232,9 @@ describe('SignerService', () => {
     );
   });
 
-  it('should throw when signer id is not configured', async () => {
+  it('should throw when wallet id is not configured', async () => {
     expect(() => service.getAddress(999)).toThrow(
-      'No signer configured for id 999',
+      'No wallet configured for id 999',
     );
   });
 });

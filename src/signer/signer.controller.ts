@@ -10,7 +10,7 @@ import {
   HttpStatus,
   NotFoundException,
   ParseIntPipe,
-  DefaultValuePipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import { SignerService } from './signer.service';
@@ -39,6 +39,19 @@ import { Public } from '../common/decorators/public.decorator';
 export class SignerController {
   constructor(private readonly signerService: SignerService) {}
 
+  private parseOptionalWalletId(walletId?: string): number | undefined {
+    if (walletId === undefined) {
+      return undefined;
+    }
+
+    const parsedWalletId = Number(walletId);
+    if (!Number.isInteger(parsedWalletId) || parsedWalletId < 1) {
+      throw new BadRequestException('walletId must be a positive integer');
+    }
+
+    return parsedWalletId;
+  }
+
   @Get('health')
   @Public()
   health() {
@@ -56,20 +69,18 @@ export class SignerController {
   @Get('address')
   @ApiOperation({ summary: 'Get signer wallet address' })
   @ApiResponse({ status: 200, type: AddressResponse })
-  getAddress(
-    @Query('signerId', new DefaultValuePipe(1), ParseIntPipe) signerId: number,
-  ): AddressResponse {
-    return this.signerService.getAddress(signerId);
+  getAddress(@Query('walletId') walletId?: string): AddressResponse {
+    return this.signerService.getAddress(this.parseOptionalWalletId(walletId));
   }
 
   @Post('sign-message')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign a message' })
   async signMessage(@Body() dto: SignMessageDto): Promise<SignMessageResponse> {
-    const signer = this.signerService.getAddress(dto.signerId);
+    const signer = this.signerService.getAddress(dto.walletId);
     const signature = await this.signerService.signMessage(
       dto.message,
-      dto.signerId,
+      dto.walletId,
     );
     return { signature, ...signer };
   }
@@ -84,7 +95,7 @@ export class SignerController {
       dto.to,
       dto.value,
       dto.data,
-      dto.signerId,
+      dto.walletId,
     );
     return result;
   }
@@ -104,9 +115,12 @@ export class SignerController {
   @ApiOperation({ summary: 'Get current nonce of the signer wallet' })
   async getNonce(
     @Query('chainId', ParseIntPipe) chainId: number,
-    @Query('signerId', new DefaultValuePipe(1), ParseIntPipe) signerId: number,
+    @Query('walletId') walletId?: string,
   ): Promise<NonceResponse> {
-    const nonce = await this.signerService.getNonce(chainId, signerId);
+    const nonce = await this.signerService.getNonce(
+      chainId,
+      this.parseOptionalWalletId(walletId),
+    );
     return { nonce };
   }
 }

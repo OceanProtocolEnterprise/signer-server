@@ -9,12 +9,15 @@ import {
 } from 'class-validator';
 
 export class SendTransactionDto {
-  @ApiProperty({ description: 'Signer id to use', required: false, default: 1 })
+  @ApiProperty({
+    description: 'Wallet id to use. Defaults to the first configured wallet.',
+    required: false,
+  })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
-  signerId?: number = 1;
+  walletId?: number;
 
   @ApiProperty({
     description: 'Chain ID for the network RPC to use',

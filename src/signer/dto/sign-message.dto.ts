@@ -3,12 +3,15 @@ import { Type } from 'class-transformer';
 import { IsString, IsNotEmpty, IsInt, IsOptional, Min } from 'class-validator';
 
 export class SignMessageDto {
-  @ApiProperty({ description: 'Signer id to use', required: false, default: 1 })
+  @ApiProperty({
+    description: 'Wallet id to use. Defaults to the first configured wallet.',
+    required: false,
+  })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
-  signerId?: number = 1;
+  walletId?: number;
 
   @ApiProperty({ description: 'Message to sign' })
   @IsString()

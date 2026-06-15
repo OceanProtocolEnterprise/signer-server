@@ -14,7 +14,7 @@ function parseNodeUriMap(): Record<string, string> {
 }
 
 type PrivateKeyConfig = {
-  id: number;
+  walletId: number;
   key: string;
 };
 
@@ -29,21 +29,25 @@ function parsePrivateKeys(): PrivateKeyConfig[] {
     throw new Error('PRIVATE_KEYS must be a JSON array');
   }
 
-  const seenIds = new Set<number>();
+  const seenWalletIds = new Set<number>();
   return parsed.map((entry, index) => {
     if (!entry || typeof entry !== 'object') {
       throw new Error(`PRIVATE_KEYS[${index}] must be an object`);
     }
 
-    const { id, key } = entry as Record<string, unknown>;
-    if (!Number.isInteger(id) || Number(id) < 1) {
-      throw new Error(`PRIVATE_KEYS[${index}].id must be a positive integer`);
+    const { walletId, key } = entry as Record<string, unknown>;
+    if (!Number.isInteger(walletId) || Number(walletId) < 1) {
+      throw new Error(
+        `PRIVATE_KEYS[${index}].walletId must be a positive integer`,
+      );
     }
 
-    if (seenIds.has(Number(id))) {
-      throw new Error(`PRIVATE_KEYS contains duplicate id ${String(id)}`);
+    if (seenWalletIds.has(Number(walletId))) {
+      throw new Error(
+        `PRIVATE_KEYS contains duplicate walletId ${String(walletId)}`,
+      );
     }
-    seenIds.add(Number(id));
+    seenWalletIds.add(Number(walletId));
 
     if (typeof key !== 'string' || !key.trim()) {
       throw new Error(`PRIVATE_KEYS[${index}].key must be a non-empty string`);
@@ -57,7 +61,7 @@ function parsePrivateKeys(): PrivateKeyConfig[] {
     }
 
     return {
-      id: Number(id),
+      walletId: Number(walletId),
       key: normalizedKey,
     };
   });

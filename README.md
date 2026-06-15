@@ -5,7 +5,7 @@ Remote signing service for Ocean Enterprise with Authentik JWT authentication.
 ## Features
 
 - Transaction signing and sending across configured networks
-- Multiple local signer private keys selectable by signer id
+- Multiple local signer private keys selectable by wallet id
 - Authentik OIDC JWT authentication (Bearer token)
 - Swagger documentation at `/api`
 - Docker & docker-compose ready
@@ -24,19 +24,19 @@ Remote signing service for Ocean Enterprise with Authentik JWT authentication.
 Local signers are configured with `PRIVATE_KEYS` as a JSON array:
 
 ```env
-PRIVATE_KEYS=[{"id":1,"key":"0x..."}]
+PRIVATE_KEYS=[{"walletId":10,"key":"0x..."}]
 NODE_URI_MAP={"11155111":"https://<your-rpc-provider-url-and-key>"}
 ```
 
-Each signer must have a unique numeric `id` and a 32-byte hex private key. Endpoints that use the signer accept an optional `signerId`; when omitted, signer `1` is used.
+Each signer must have a unique numeric `walletId` and a 32-byte hex private key. Endpoints that use the signer accept an optional `walletId`; when omitted, the first wallet from `PRIVATE_KEYS` is used.
 
 ## Endpoints (all protected by JWT)
 
-- `GET /address?signerId=1`
+- `GET /address?walletId=10`
 - `POST /sign-message`
 - `POST /send-transaction`
 - `GET /transaction/:hash`
-- `GET /nonce?chainId=11155111&signerId=1`
+- `GET /nonce?chainId=11155111&walletId=10`
 
 ## Testing
 

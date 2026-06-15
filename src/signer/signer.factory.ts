@@ -11,11 +11,11 @@ export class SignerFactory {
     const signers = new Map<number, ManagedSigner>();
 
     privateKeys.forEach((privateKey) => {
-      if (signers.has(privateKey.id)) {
-        throw new Error(`Duplicate signer id ${privateKey.id}`);
+      if (signers.has(privateKey.walletId)) {
+        throw new Error(`Duplicate wallet id ${privateKey.walletId}`);
       }
 
-      signers.set(privateKey.id, this.createLocalSigner(privateKey));
+      signers.set(privateKey.walletId, this.createLocalSigner(privateKey));
     });
 
     return signers;
@@ -25,7 +25,7 @@ export class SignerFactory {
     const wallet = new ethers.Wallet(privateKey.key);
 
     return {
-      id: privateKey.id,
+      walletId: privateKey.walletId,
       address: wallet.address,
       signer: wallet,
     };

@@ -29,39 +29,39 @@ describe('SignerFactory', () => {
   it('should create local signers from private key config', () => {
     const signers = factory.createSigners([
       {
-        id: 1,
+        walletId: 10,
         key: `0x${'1'.repeat(64)}`,
       },
       {
-        id: 2,
+        walletId: 20,
         key: `0x${'2'.repeat(64)}`,
       },
     ]);
 
-    expect(signers.get(1)).toEqual({
-      id: 1,
+    expect(signers.get(10)).toEqual({
+      walletId: 10,
       address: '0xMockAddress1',
       signer: mockWallets.get(`0x${'1'.repeat(64)}`),
     });
-    expect(signers.get(2)).toEqual({
-      id: 2,
+    expect(signers.get(20)).toEqual({
+      walletId: 20,
       address: '0xMockAddress2',
       signer: mockWallets.get(`0x${'2'.repeat(64)}`),
     });
   });
 
-  it('should reject duplicate signer ids', () => {
+  it('should reject duplicate wallet ids', () => {
     expect(() =>
       factory.createSigners([
         {
-          id: 1,
+          walletId: 10,
           key: `0x${'1'.repeat(64)}`,
         },
         {
-          id: 1,
+          walletId: 10,
           key: `0x${'2'.repeat(64)}`,
         },
       ]),
-    ).toThrow('Duplicate signer id 1');
+    ).toThrow('Duplicate wallet id 10');
   });
 });

@@ -1,12 +1,12 @@
 import { ethers } from 'ethers';
 
 export type SignerKeyConfig = {
-  id: number;
+  walletId: number;
   key: string;
 };
 
 export type ManagedSigner = {
-  id: number;
+  walletId: number;
   address: string;
   signer: ethers.AbstractSigner;
 };

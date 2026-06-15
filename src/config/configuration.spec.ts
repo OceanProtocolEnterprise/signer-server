@@ -14,22 +14,22 @@ describe('configuration', () => {
   it('parses multiple private keys', () => {
     process.env.PRIVATE_KEYS = JSON.stringify([
       {
-        id: 1,
+        walletId: 10,
         key: `0x${'1'.repeat(64)}`,
       },
       {
-        id: 2,
+        walletId: 20,
         key: `0x${'2'.repeat(64)}`,
       },
     ]);
 
     expect(configuration().signer.privateKeys).toEqual([
       {
-        id: 1,
+        walletId: 10,
         key: `0x${'1'.repeat(64)}`,
       },
       {
-        id: 2,
+        walletId: 20,
         key: `0x${'2'.repeat(64)}`,
       },
     ]);
@@ -38,24 +38,24 @@ describe('configuration', () => {
   it('rejects duplicate private key ids', () => {
     process.env.PRIVATE_KEYS = JSON.stringify([
       {
-        id: 1,
+        walletId: 10,
         key: `0x${'1'.repeat(64)}`,
       },
       {
-        id: 1,
+        walletId: 10,
         key: `0x${'2'.repeat(64)}`,
       },
     ]);
 
     expect(() => configuration()).toThrow(
-      'PRIVATE_KEYS contains duplicate id 1',
+      'PRIVATE_KEYS contains duplicate walletId 10',
     );
   });
 
   it('rejects invalid private key format', () => {
     process.env.PRIVATE_KEYS = JSON.stringify([
       {
-        id: 1,
+        walletId: 10,
         key: 'not-a-key',
       },
     ]);
