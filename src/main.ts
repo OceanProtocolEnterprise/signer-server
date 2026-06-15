@@ -7,9 +7,19 @@ import {
 } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import {
+  getServerPort,
+  getTlsOptions,
+  getTlsPaths,
+  shouldWarnAboutPartialTlsConfig,
+} from './server-startup';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const tlsPaths = getTlsPaths();
+  const tlsOptions = getTlsOptions(tlsPaths);
+  const app = await NestFactory.create(AppModule, {
+    ...(tlsOptions ? { httpsOptions: tlsOptions } : {}),
+  });
   const logger = new Logger('Bootstrap');
 
   // Global pipes, filters, interceptors
@@ -40,8 +50,16 @@ async function bootstrap() {
   );
   SwaggerModule.setup('api', app, document);
 
-  const port = process.env.PORT || 3001;
+  const port = getServerPort();
+  if (shouldWarnAboutPartialTlsConfig(tlsPaths)) {
+    logger.warn(
+      'Both HTTP_CERT_PATH and HTTP_KEY_PATH must be configured to enable HTTPS. Starting HTTP server.',
+    );
+  }
+
   await app.listen(port);
-  logger.log(`Signer service running on port ${port}`);
+  logger.log(
+    `Signer service running on ${tlsOptions ? 'HTTPS' : 'HTTP'} port ${port}`,
+  );
 }
 bootstrap();

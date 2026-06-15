@@ -3,12 +3,16 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class AddressResponse {
   @ApiProperty()
+  walletId: number;
+  @ApiProperty()
   address: string;
 }
 
 export class SignMessageResponse {
   @ApiProperty()
   signature: string;
+  @ApiProperty()
+  walletId: number;
   @ApiProperty()
   address: string;
 }

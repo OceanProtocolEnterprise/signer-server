@@ -6,4 +6,6 @@ services:
       - "3001:3001"
     env_file:
       - .env
+    volumes:
+      - ./certs:/etc/ssl/certs:ro
     restart: unless-stopped

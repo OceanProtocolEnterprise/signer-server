@@ -10,6 +10,17 @@ import {
 
 export class SendTransactionDto {
   @ApiProperty({
+    description:
+      'Wallet id to use. Defaults to the first configured wallet.',
+    required: false,
+  })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  walletId?: number;
+
+  @ApiProperty({
     description: 'Chain ID for the network RPC to use',
     example: 11155111,
   })

@@ -1,6 +1,7 @@
 const tsParser = require('@typescript-eslint/parser');
 const tsPlugin = require('@typescript-eslint/eslint-plugin');
 const prettier = require('eslint-plugin-prettier');
+const security = require('eslint-plugin-security');
 
 module.exports = [
   {
@@ -18,6 +19,7 @@ module.exports = [
     plugins: {
       '@typescript-eslint': tsPlugin,
       prettier,
+      security,
     },
     rules: {
       'prettier/prettier': 'error',
@@ -33,6 +35,8 @@ module.exports = [
         'off',
 
       '@typescript-eslint/no-explicit-any': 'warn',
+
+      'security/detect-non-literal-fs-filename': 'warn',
     },
   },
 ];
