@@ -50,6 +50,7 @@ jobs:
           AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
           CHAIN_ID: ${{ vars.CHAIN_ID }}
           ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
+          SIGNER_MODE: ${{ vars.SIGNER_MODE }}
           PORT: 3001
 
       - name: Coverage
