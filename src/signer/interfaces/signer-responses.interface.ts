@@ -19,15 +19,15 @@ export class SendTransactionResult {
   @ApiProperty()
   from: string;
   @ApiProperty({ nullable: true })
-  to: string | null;   
+  to: string | null;
   @ApiProperty()
   nonce: number;
   @ApiProperty()
   blockNumber: number;
   @ApiProperty()
   gasUsed: string;
-  @ApiProperty({ nullable: true })   
-  status: number | null; 
+  @ApiProperty({ nullable: true })
+  status: number | null;
 }
 export type SendTransactionResponse = SendTransactionResult;
 

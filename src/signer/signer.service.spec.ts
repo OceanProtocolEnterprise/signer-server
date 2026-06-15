@@ -43,31 +43,33 @@ describe('SignerService', () => {
     jest.clearAllMocks();
     mockWallet.connect.mockReturnValue(mockWallet);
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SignerService,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string) => {
-              switch (key) {
-                case 'signer.privateKey':
-                  return '0xtestkey';
+    const module: TestingModule =
+      await Test.createTestingModule({
+        providers: [
+          SignerService,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                switch (key) {
+                  case 'signer.privateKey':
+                    return '0xtestkey';
 
-                case 'signer.nodeUriMap':
-                  return {
-                    '11155111': 'https://test.rpc',
-                    '11155420': 'https://test.optimism.rpc',
-                  };
+                  case 'signer.nodeUriMap':
+                    return {
+                      '11155111': 'https://test.rpc',
+                      '11155420':
+                        'https://test.optimism.rpc',
+                    };
 
-                default:
-                  return undefined;
-              }
-            }),
+                  default:
+                    return undefined;
+                }
+              }),
+            },
           },
-        },
-      ],
-    }).compile();
+        ],
+      }).compile();
 
     service = module.get<SignerService>(SignerService);
 
@@ -108,7 +110,9 @@ describe('SignerService', () => {
       gasUsed: '21000',
       status: 1,
     });
-    expect(mockWallet.connect).toHaveBeenCalledWith(mockProvider);
+    expect(mockWallet.connect).toHaveBeenCalledWith(
+      mockProvider,
+    );
     expect(mockSendTransaction).toHaveBeenCalledWith({
       to: '0xto',
       value: 100n,
@@ -152,9 +156,7 @@ describe('SignerService', () => {
   });
 
   it('should return null when transaction is not found', async () => {
-    mockProvider.getTransaction.mockResolvedValue(
-      null,
-    );
+    mockProvider.getTransaction.mockResolvedValue(null);
 
     const tx = await service.getTransaction(
       11155111,
@@ -165,9 +167,7 @@ describe('SignerService', () => {
   });
 
   it('should get nonce', async () => {
-    mockProvider.getTransactionCount.mockResolvedValue(
-      42,
-    );
+    mockProvider.getTransactionCount.mockResolvedValue(42);
 
     const nonce = await service.getNonce(11155111);
 
@@ -175,9 +175,7 @@ describe('SignerService', () => {
 
     expect(
       mockProvider.getTransactionCount,
-    ).toHaveBeenCalledWith(
-      '0xMockAddress',
-    );
+    ).toHaveBeenCalledWith('0xMockAddress');
   });
 
   it('should throw when chain ID has no configured node URI', async () => {

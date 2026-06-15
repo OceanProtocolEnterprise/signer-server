@@ -21,12 +21,11 @@ describe('JwtStrategy', () => {
   });
 
   it('should validate payload', async () => {
-    const result =
-      await strategy.validate({
-        sub: '123',
-        email: 'test@test.com',
-        orgId: 'org1',
-      });
+    const result = await strategy.validate({
+      sub: '123',
+      email: 'test@test.com',
+      orgId: 'org1',
+    });
 
     expect(result.sub).toBe('123');
   });

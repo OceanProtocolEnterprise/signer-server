@@ -4,9 +4,15 @@ function parseNodeUriMap(): Record<string, string> {
     return {};
   }
 
-  const parsed = JSON.parse(value) as Record<string, unknown>;
+  const parsed = JSON.parse(value) as Record<
+    string,
+    unknown
+  >;
   return Object.fromEntries(
-    Object.entries(parsed).map(([chainId, nodeUri]) => [chainId, String(nodeUri)]),
+    Object.entries(parsed).map(([chainId, nodeUri]) => [
+      chainId,
+      String(nodeUri),
+    ]),
   );
 }
 
