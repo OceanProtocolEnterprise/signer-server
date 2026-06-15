@@ -20,17 +20,20 @@ describe('JWT Authentication', () => {
     await app.close();
   });
 
-  it('GET /address without token should fail', () => {
-    return request(app.getHttpServer())
-      .get('/address')
-      .expect(401);
+  it('GET /address should reject requests without JWT', async () => {
+    const res = await request(app.getHttpServer()).get(
+      '/address',
+    );
+
+    expect(res.status).toBe(401);
   });
 
-  it('GET /address with invalid token should fail', () => {
-    return request(app.getHttpServer())
+  it('GET /address should reject malformed JWT', async () => {
+    const res = await request(app.getHttpServer())
       .get('/address')
-      .set('Authorization', 'Bearer invalid-token')
-      .expect(401);
+      .set('Authorization', 'Bearer invalid-token');
+
+    expect(res.status).toBe(401);
   });
 
   it('GET /health should work without token', () => {
@@ -39,18 +42,21 @@ describe('JWT Authentication', () => {
       .expect(200);
   });
 
-  it('GET /nonce without token should fail', () => {
-    return request(app.getHttpServer())
-      .get('/nonce')
-      .expect(401);
+  it('GET /nonce should reject requests without JWT', async () => {
+    const res = await request(app.getHttpServer()).get(
+      '/nonce',
+    );
+
+    expect(res.status).toBe(401);
   });
 
-  it('POST /sign-message without token should fail', () => {
-    return request(app.getHttpServer())
+  it('POST /sign-message should reject requests without JWT', async () => {
+    const res = await request(app.getHttpServer())
       .post('/sign-message')
       .send({
         message: 'hello',
-      })
-      .expect(401);
+      });
+
+    expect(res.status).toBe(401);
   });
 });
