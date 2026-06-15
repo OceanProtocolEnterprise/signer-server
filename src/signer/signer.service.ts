@@ -1,5 +1,9 @@
 // src/signer/signer.service.ts
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { SignerFactory } from './signer.factory';
@@ -16,7 +20,10 @@ import {
 export class SignerService implements OnModuleInit {
   private readonly logger = new Logger(SignerService.name);
   private nodeUriMap: Record<string, string>;
-  private providers = new Map<number, ethers.JsonRpcProvider>();
+  private providers = new Map<
+    number,
+    ethers.JsonRpcProvider
+  >();
   private signers = new Map<number, ManagedSigner>();
 
   constructor(
@@ -26,24 +33,36 @@ export class SignerService implements OnModuleInit {
 
   async onModuleInit() {
     const nodeUriMap =
-      this.configService.get<Record<string, string>>('signer.nodeUriMap') ?? {};
+      this.configService.get<Record<string, string>>(
+        'signer.nodeUriMap',
+      ) ?? {};
     const privateKeys =
-      this.configService.get<SignerKeyConfig[]>('signer.privateKeys') ?? [];
+      this.configService.get<SignerKeyConfig[]>(
+        'signer.privateKeys',
+      ) ?? [];
 
-    if (!Object.keys(nodeUriMap).length || !privateKeys.length) {
+    if (
+      !Object.keys(nodeUriMap).length ||
+      !privateKeys.length
+    ) {
       throw new Error(
         'Missing signer configuration (NODE_URI_MAP or PRIVATE_KEYS)',
       );
     }
 
     this.nodeUriMap = nodeUriMap;
-    this.signers = this.signerFactory.createSigners(privateKeys);
+    this.signers =
+      this.signerFactory.createSigners(privateKeys);
     this.signers.forEach(({ id, address }) => {
-      this.logger.log(`Signer ${id} initialized with address: ${address}`);
+      this.logger.log(
+        `Signer ${id} initialized with address: ${address}`,
+      );
     });
   }
 
-  private getProvider(chainId: number): ethers.JsonRpcProvider {
+  private getProvider(
+    chainId: number,
+  ): ethers.JsonRpcProvider {
     const cachedProvider = this.providers.get(chainId);
     if (cachedProvider) {
       return cachedProvider;
@@ -51,7 +70,9 @@ export class SignerService implements OnModuleInit {
 
     const nodeUri = this.nodeUriMap[String(chainId)];
     if (!nodeUri) {
-      throw new Error(`No node URI configured for chain ID ${chainId}`);
+      throw new Error(
+        `No node URI configured for chain ID ${chainId}`,
+      );
     }
 
     const provider = new ethers.JsonRpcProvider(nodeUri, {
@@ -65,7 +86,9 @@ export class SignerService implements OnModuleInit {
   private getSigner(signerId = 1): ManagedSigner {
     const signer = this.signers.get(signerId);
     if (!signer) {
-      throw new Error(`No signer configured for id ${signerId}`);
+      throw new Error(
+        `No signer configured for id ${signerId}`,
+      );
     }
     return signer;
   }
@@ -81,8 +104,13 @@ export class SignerService implements OnModuleInit {
     };
   }
 
-  async signMessage(message: string, signerId = 1): Promise<string> {
-    return this.getSigner(signerId).signer.signMessage(message);
+  async signMessage(
+    message: string,
+    signerId = 1,
+  ): Promise<string> {
+    return this.getSigner(signerId).signer.signMessage(
+      message,
+    );
   }
 
   async sendTransaction(
@@ -100,7 +128,8 @@ export class SignerService implements OnModuleInit {
         data,
       });
     const receipt = await tx.wait();
-    if (!receipt) throw new Error('Transaction receipt not available');
+    if (!receipt)
+      throw new Error('Transaction receipt not available');
     return {
       hash: tx.hash,
       from: tx.from,
@@ -116,7 +145,8 @@ export class SignerService implements OnModuleInit {
     chainId: number,
     hash: string,
   ): Promise<TransactionResponse | null> {
-    const tx = await this.getProvider(chainId).getTransaction(hash);
+    const tx =
+      await this.getProvider(chainId).getTransaction(hash);
     if (!tx) return null;
     return {
       hash: tx.hash,
@@ -131,7 +161,10 @@ export class SignerService implements OnModuleInit {
     };
   }
 
-  async getNonce(chainId: number, signerId = 1): Promise<number> {
+  async getNonce(
+    chainId: number,
+    signerId = 1,
+  ): Promise<number> {
     return this.getProvider(chainId).getTransactionCount(
       this.getSigner(signerId).address,
     );

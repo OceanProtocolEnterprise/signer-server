@@ -1,7 +1,9 @@
 const mockWallets = new Map<string, any>();
 
 function mockCreateWallet(privateKey: string) {
-  const signerNumber = privateKey.endsWith('2'.repeat(64)) ? '2' : '1';
+  const signerNumber = privateKey.endsWith('2'.repeat(64))
+    ? '2'
+    : '1';
   const wallet = {
     address: `0xMockAddress${signerNumber}`,
   };
@@ -11,7 +13,9 @@ function mockCreateWallet(privateKey: string) {
 
 jest.mock('ethers', () => ({
   ethers: {
-    Wallet: jest.fn((privateKey: string) => mockCreateWallet(privateKey)),
+    Wallet: jest.fn((privateKey: string) =>
+      mockCreateWallet(privateKey),
+    ),
   },
 }));
 

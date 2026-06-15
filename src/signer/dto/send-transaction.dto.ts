@@ -9,7 +9,11 @@ import {
 } from 'class-validator';
 
 export class SendTransactionDto {
-  @ApiProperty({ description: 'Signer id to use', required: false, default: 1 })
+  @ApiProperty({
+    description: 'Signer id to use',
+    required: false,
+    default: 1,
+  })
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -29,7 +33,11 @@ export class SendTransactionDto {
   @IsEthereumAddress()
   to: string;
 
-  @ApiProperty({ description: 'Value in wei', required: false, default: '0' })
+  @ApiProperty({
+    description: 'Value in wei',
+    required: false,
+    default: '0',
+  })
   @IsString()
   @IsOptional()
   value?: string = '0';

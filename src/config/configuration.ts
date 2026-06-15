@@ -4,7 +4,10 @@ function parseNodeUriMap(): Record<string, string> {
     return {};
   }
 
-  const parsed = JSON.parse(value) as Record<string, unknown>;
+  const parsed = JSON.parse(value) as Record<
+    string,
+    unknown
+  >;
   return Object.fromEntries(
     Object.entries(parsed).map(([chainId, nodeUri]) => [
       chainId,
@@ -32,21 +35,29 @@ function parsePrivateKeys(): PrivateKeyConfig[] {
   const seenIds = new Set<number>();
   return parsed.map((entry, index) => {
     if (!entry || typeof entry !== 'object') {
-      throw new Error(`PRIVATE_KEYS[${index}] must be an object`);
+      throw new Error(
+        `PRIVATE_KEYS[${index}] must be an object`,
+      );
     }
 
     const { id, key } = entry as Record<string, unknown>;
     if (!Number.isInteger(id) || Number(id) < 1) {
-      throw new Error(`PRIVATE_KEYS[${index}].id must be a positive integer`);
+      throw new Error(
+        `PRIVATE_KEYS[${index}].id must be a positive integer`,
+      );
     }
 
     if (seenIds.has(Number(id))) {
-      throw new Error(`PRIVATE_KEYS contains duplicate id ${String(id)}`);
+      throw new Error(
+        `PRIVATE_KEYS contains duplicate id ${String(id)}`,
+      );
     }
     seenIds.add(Number(id));
 
     if (typeof key !== 'string' || !key.trim()) {
-      throw new Error(`PRIVATE_KEYS[${index}].key must be a non-empty string`);
+      throw new Error(
+        `PRIVATE_KEYS[${index}].key must be a non-empty string`,
+      );
     }
 
     const normalizedKey = key.trim();

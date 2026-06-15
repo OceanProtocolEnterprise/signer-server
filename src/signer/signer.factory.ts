@@ -7,21 +7,30 @@ import {
 
 @Injectable()
 export class SignerFactory {
-  createSigners(privateKeys: SignerKeyConfig[]): Map<number, ManagedSigner> {
+  createSigners(
+    privateKeys: SignerKeyConfig[],
+  ): Map<number, ManagedSigner> {
     const signers = new Map<number, ManagedSigner>();
 
     privateKeys.forEach((privateKey) => {
       if (signers.has(privateKey.id)) {
-        throw new Error(`Duplicate signer id ${privateKey.id}`);
+        throw new Error(
+          `Duplicate signer id ${privateKey.id}`,
+        );
       }
 
-      signers.set(privateKey.id, this.createLocalSigner(privateKey));
+      signers.set(
+        privateKey.id,
+        this.createLocalSigner(privateKey),
+      );
     });
 
     return signers;
   }
 
-  private createLocalSigner(privateKey: SignerKeyConfig): ManagedSigner {
+  private createLocalSigner(
+    privateKey: SignerKeyConfig,
+  ): ManagedSigner {
     const wallet = new ethers.Wallet(privateKey.key);
 
     return {

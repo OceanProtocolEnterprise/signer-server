@@ -1,12 +1,11 @@
-
 export interface SignMessageResponse {
-  signature: string
+  signature: string;
 }
 
 export interface SendTransactionResponse {
-  hash: string
+  hash: string;
 }
 
 export interface AddressResponse {
-  address: string
+  address: string;
 }

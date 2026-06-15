@@ -37,7 +37,9 @@ import { Public } from '../common/decorators/public.decorator';
 @UseGuards(AuthentikGuard)
 @ApiBearerAuth()
 export class SignerController {
-  constructor(private readonly signerService: SignerService) {}
+  constructor(
+    private readonly signerService: SignerService,
+  ) {}
 
   @Get('health')
   @Public()
@@ -57,7 +59,12 @@ export class SignerController {
   @ApiOperation({ summary: 'Get signer wallet address' })
   @ApiResponse({ status: 200, type: AddressResponse })
   getAddress(
-    @Query('signerId', new DefaultValuePipe(1), ParseIntPipe) signerId: number,
+    @Query(
+      'signerId',
+      new DefaultValuePipe(1),
+      ParseIntPipe,
+    )
+    signerId: number,
   ): AddressResponse {
     return this.signerService.getAddress(signerId);
   }
@@ -65,8 +72,12 @@ export class SignerController {
   @Post('sign-message')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign a message' })
-  async signMessage(@Body() dto: SignMessageDto): Promise<SignMessageResponse> {
-    const signer = this.signerService.getAddress(dto.signerId);
+  async signMessage(
+    @Body() dto: SignMessageDto,
+  ): Promise<SignMessageResponse> {
+    const signer = this.signerService.getAddress(
+      dto.signerId,
+    );
     const signature = await this.signerService.signMessage(
       dto.message,
       dto.signerId,
@@ -95,18 +106,32 @@ export class SignerController {
     @Param('hash') hash: string,
     @Query('chainId', ParseIntPipe) chainId: number,
   ): Promise<TransactionResponse> {
-    const tx = await this.signerService.getTransaction(chainId, hash);
-    if (!tx) throw new NotFoundException('Transaction not found');
+    const tx = await this.signerService.getTransaction(
+      chainId,
+      hash,
+    );
+    if (!tx)
+      throw new NotFoundException('Transaction not found');
     return tx;
   }
 
   @Get('nonce')
-  @ApiOperation({ summary: 'Get current nonce of the signer wallet' })
+  @ApiOperation({
+    summary: 'Get current nonce of the signer wallet',
+  })
   async getNonce(
     @Query('chainId', ParseIntPipe) chainId: number,
-    @Query('signerId', new DefaultValuePipe(1), ParseIntPipe) signerId: number,
+    @Query(
+      'signerId',
+      new DefaultValuePipe(1),
+      ParseIntPipe,
+    )
+    signerId: number,
   ): Promise<NonceResponse> {
-    const nonce = await this.signerService.getNonce(chainId, signerId);
+    const nonce = await this.signerService.getNonce(
+      chainId,
+      signerId,
+    );
     return { nonce };
   }
 }

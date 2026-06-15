@@ -29,10 +29,7 @@ describe('JWT Authentication', () => {
   it('GET /address with invalid token should fail', () => {
     return request(app.getHttpServer())
       .get('/address')
-      .set(
-        'Authorization',
-        'Bearer invalid-token',
-      )
+      .set('Authorization', 'Bearer invalid-token')
       .expect(401);
   });
 

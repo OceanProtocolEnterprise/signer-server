@@ -19,10 +19,14 @@ const mockSendTransaction = jest.fn().mockResolvedValue({
 const mockWallets = new Map<string, any>();
 
 function mockCreateWallet(privateKey: string) {
-  const signerNumber = privateKey.endsWith('2'.repeat(64)) ? '2' : '1';
+  const signerNumber = privateKey.endsWith('2'.repeat(64))
+    ? '2'
+    : '1';
   const wallet = {
     address: `0xMockAddress${signerNumber}`,
-    signMessage: jest.fn().mockResolvedValue(`0xsigned${signerNumber}`),
+    signMessage: jest
+      .fn()
+      .mockResolvedValue(`0xsigned${signerNumber}`),
     sendTransaction: mockSendTransaction,
     connect: jest.fn(),
   };
@@ -39,7 +43,9 @@ const mockProvider = {
 jest.mock('ethers', () => ({
   ethers: {
     JsonRpcProvider: jest.fn(() => mockProvider),
-    Wallet: jest.fn((privateKey: string) => mockCreateWallet(privateKey)),
+    Wallet: jest.fn((privateKey: string) =>
+      mockCreateWallet(privateKey),
+    ),
   },
 }));
 
@@ -52,41 +58,43 @@ describe('SignerService', () => {
     jest.clearAllMocks();
     mockWallets.clear();
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SignerService,
-        SignerFactory,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string) => {
-              switch (key) {
-                case 'signer.privateKeys':
-                  return [
-                    {
-                      id: 1,
-                      key: `0x${'1'.repeat(64)}`,
-                    },
-                    {
-                      id: 2,
-                      key: `0x${'2'.repeat(64)}`,
-                    },
-                  ];
+    const module: TestingModule =
+      await Test.createTestingModule({
+        providers: [
+          SignerService,
+          SignerFactory,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                switch (key) {
+                  case 'signer.privateKeys':
+                    return [
+                      {
+                        id: 1,
+                        key: `0x${'1'.repeat(64)}`,
+                      },
+                      {
+                        id: 2,
+                        key: `0x${'2'.repeat(64)}`,
+                      },
+                    ];
 
-                case 'signer.nodeUriMap':
-                  return {
-                    '11155111': 'https://test.rpc',
-                    '11155420': 'https://test.optimism.rpc',
-                  };
+                  case 'signer.nodeUriMap':
+                    return {
+                      '11155111': 'https://test.rpc',
+                      '11155420':
+                        'https://test.optimism.rpc',
+                    };
 
-                default:
-                  return undefined;
-              }
-            }),
+                  default:
+                    return undefined;
+                }
+              }),
+            },
           },
-        },
-      ],
-    }).compile();
+        ],
+      }).compile();
 
     service = module.get<SignerService>(SignerService);
 
@@ -146,9 +154,9 @@ describe('SignerService', () => {
       gasUsed: '21000',
       status: 1,
     });
-    expect(mockWallets.get(`0x${'1'.repeat(64)}`).connect).toHaveBeenCalledWith(
-      mockProvider,
-    );
+    expect(
+      mockWallets.get(`0x${'1'.repeat(64)}`).connect,
+    ).toHaveBeenCalledWith(mockProvider);
     expect(mockSendTransaction).toHaveBeenCalledWith({
       to: '0xto',
       value: 100n,
@@ -157,11 +165,17 @@ describe('SignerService', () => {
   });
 
   it('should send transaction with selected signer', async () => {
-    await service.sendTransaction(11155111, '0xto', '100', '0xdata', 2);
-
-    expect(mockWallets.get(`0x${'2'.repeat(64)}`).connect).toHaveBeenCalledWith(
-      mockProvider,
+    await service.sendTransaction(
+      11155111,
+      '0xto',
+      '100',
+      '0xdata',
+      2,
     );
+
+    expect(
+      mockWallets.get(`0x${'2'.repeat(64)}`).connect,
+    ).toHaveBeenCalledWith(mockProvider);
   });
 
   it('should get transaction', async () => {
@@ -177,7 +191,10 @@ describe('SignerService', () => {
       chainId: 11155111n,
     });
 
-    const tx = await service.getTransaction(11155111, '0xhash');
+    const tx = await service.getTransaction(
+      11155111,
+      '0xhash',
+    );
 
     expect(tx).toEqual({
       hash: '0xhash',
@@ -191,13 +208,18 @@ describe('SignerService', () => {
       chainId: '11155111',
     });
 
-    expect(mockProvider.getTransaction).toHaveBeenCalledWith('0xhash');
+    expect(
+      mockProvider.getTransaction,
+    ).toHaveBeenCalledWith('0xhash');
   });
 
   it('should return null when transaction is not found', async () => {
     mockProvider.getTransaction.mockResolvedValue(null);
 
-    const tx = await service.getTransaction(11155111, '0xhash');
+    const tx = await service.getTransaction(
+      11155111,
+      '0xhash',
+    );
 
     expect(tx).toBeNull();
   });
@@ -209,9 +231,9 @@ describe('SignerService', () => {
 
     expect(nonce).toBe(42);
 
-    expect(mockProvider.getTransactionCount).toHaveBeenCalledWith(
-      '0xMockAddress1',
-    );
+    expect(
+      mockProvider.getTransactionCount,
+    ).toHaveBeenCalledWith('0xMockAddress1');
   });
 
   it('should get nonce for selected signer', async () => {
@@ -221,9 +243,9 @@ describe('SignerService', () => {
 
     expect(nonce).toBe(24);
 
-    expect(mockProvider.getTransactionCount).toHaveBeenCalledWith(
-      '0xMockAddress2',
-    );
+    expect(
+      mockProvider.getTransactionCount,
+    ).toHaveBeenCalledWith('0xMockAddress2');
   });
 
   it('should throw when chain ID has no configured node URI', async () => {
