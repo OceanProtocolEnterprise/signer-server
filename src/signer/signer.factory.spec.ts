@@ -11,6 +11,9 @@ function mockCreateWallet(privateKey: string) {
 
 jest.mock('ethers', () => ({
   ethers: {
+    AbstractSigner: class {
+      constructor(public provider?: unknown) {}
+    },
     Wallet: jest.fn((privateKey: string) => mockCreateWallet(privateKey)),
   },
 }));
@@ -27,7 +30,7 @@ describe('SignerFactory', () => {
   });
 
   it('should create local signers from private key config', () => {
-    const signers = factory.createSigners([
+    const signers = factory.createLocalSigners([
       {
         walletId: 10,
         key: `0x${'1'.repeat(64)}`,
@@ -52,7 +55,7 @@ describe('SignerFactory', () => {
 
   it('should reject duplicate wallet ids', () => {
     expect(() =>
-      factory.createSigners([
+      factory.createLocalSigners([
         {
           walletId: 10,
           key: `0x${'1'.repeat(64)}`,
@@ -63,5 +66,41 @@ describe('SignerFactory', () => {
         },
       ]),
     ).toThrow('Duplicate wallet id 10');
+  });
+
+  it('should create an OpenBao signer from vault config', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: {
+          data: {
+            address: '0xVaultAddress',
+          },
+        },
+      }),
+    } as unknown as Response);
+
+    const signers = await factory.createOpenBaoSigners({
+      walletId: 30,
+      url: 'http://openbao.test',
+      token: 'vault-token',
+      ethereumMount: 'ethereum',
+      kvStorePath: 'secret',
+      timeoutMs: 5000,
+    });
+
+    expect(signers.get(30)).toMatchObject({
+      walletId: 30,
+      address: '0xVaultAddress',
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://openbao.test/v1/secret/data/wallets/by-id/30',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          'X-Vault-Token': 'vault-token',
+        }),
+      }),
+    );
   });
 });

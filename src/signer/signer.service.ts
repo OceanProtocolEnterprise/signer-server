@@ -5,7 +5,9 @@ import { ethers } from 'ethers';
 import { SignerFactory } from './signer.factory';
 import {
   ManagedSigner,
+  OpenBaoSignerConfig,
   SignerKeyConfig,
+  SignerMode,
 } from './interfaces/signer-config.interface';
 import {
   TransactionResponse,
@@ -19,6 +21,8 @@ export class SignerService implements OnModuleInit {
   private providers = new Map<number, ethers.JsonRpcProvider>();
   private signers = new Map<number, ManagedSigner>();
   private defaultWalletId: number;
+  private signerMode: SignerMode;
+  private openBaoConfig?: Omit<OpenBaoSignerConfig, 'walletId'>;
 
   constructor(
     private configService: ConfigService,
@@ -28,20 +32,57 @@ export class SignerService implements OnModuleInit {
   async onModuleInit() {
     const nodeUriMap =
       this.configService.get<Record<string, string>>('signer.nodeUriMap') ?? {};
+    const signerMode = this.configService.get<SignerMode>('signer.mode');
     const privateKeys =
       this.configService.get<SignerKeyConfig[]>('signer.privateKeys') ?? [];
+    const openBaoConfig =
+      this.configService.get<Partial<OpenBaoSignerConfig>>('signer.openBao') ??
+      {};
 
-    if (!Object.keys(nodeUriMap).length || !privateKeys.length) {
-      throw new Error(
-        'Missing signer configuration (NODE_URI_MAP or PRIVATE_KEYS)',
-      );
+    if (!signerMode) {
+      throw new Error('SIGNER_MODE must be either local or openbao');
+    }
+
+    if (!Object.keys(nodeUriMap).length) {
+      throw new Error('Missing signer configuration (NODE_URI_MAP)');
     }
 
     this.nodeUriMap = nodeUriMap;
-    this.signers = this.signerFactory.createSigners(privateKeys);
-    this.defaultWalletId = privateKeys[0].walletId;
+    this.signerMode = signerMode;
+    if (signerMode === 'local') {
+      if (!privateKeys.length) {
+        throw new Error('Missing signer configuration (PRIVATE_KEYS)');
+      }
+
+      this.signers = this.signerFactory.createLocalSigners(privateKeys);
+      this.defaultWalletId = privateKeys[0].walletId;
+    } else {
+      if (
+        !openBaoConfig.url ||
+        !openBaoConfig.token ||
+        !openBaoConfig.ethereumMount ||
+        !openBaoConfig.kvStorePath ||
+        !openBaoConfig.timeoutMs
+      ) {
+        throw new Error(
+          'Missing OpenBao signer configuration (VAULT_URL, VAULT_TOKEN, VAULT_ETHEREUM_MOUNT, VAULT_KV_STORE_PATH, or VAULT_TIMEOUT_MS)',
+        );
+      }
+
+      this.openBaoConfig = {
+        url: openBaoConfig.url,
+        token: openBaoConfig.token,
+        ethereumMount: openBaoConfig.ethereumMount,
+        kvStorePath: openBaoConfig.kvStorePath,
+        timeoutMs: openBaoConfig.timeoutMs,
+      };
+      this.logger.log('OpenBao signer mode initialized');
+    }
+
     this.signers.forEach(({ walletId, address }) => {
-      this.logger.log(`Wallet ${walletId} initialized with address: ${address}`);
+      this.logger.log(
+        `Wallet ${walletId} initialized with address: ${address}`,
+      );
     });
   }
 
@@ -64,19 +105,45 @@ export class SignerService implements OnModuleInit {
     return provider;
   }
 
-  private getSigner(walletId = this.defaultWalletId): ManagedSigner {
-    const signer = this.signers.get(walletId);
+  private async getSigner(walletId?: number): Promise<ManagedSigner> {
+    const resolvedWalletId = walletId ?? this.defaultWalletId;
+    const signer = this.signers.get(resolvedWalletId);
     if (!signer) {
-      throw new Error(`No wallet configured for id ${walletId}`);
+      if (this.signerMode !== 'openbao') {
+        throw new Error(`No wallet configured for id ${resolvedWalletId}`);
+      }
+
+      if (!walletId) {
+        throw new Error('walletId is required when SIGNER_MODE=openbao');
+      }
+
+      if (!this.openBaoConfig) {
+        throw new Error('OpenBao signer configuration is not initialized');
+      }
+
+      const openBaoSigners = await this.signerFactory.createOpenBaoSigners({
+        walletId,
+        ...this.openBaoConfig,
+      });
+      const openBaoSigner = openBaoSigners.get(walletId);
+      if (!openBaoSigner) {
+        throw new Error(`No OpenBao wallet resolved for id ${walletId}`);
+      }
+
+      this.signers.set(walletId, openBaoSigner);
+      this.logger.log(
+        `OpenBao wallet ${walletId} resolved with address: ${openBaoSigner.address}`,
+      );
+      return openBaoSigner;
     }
     return signer;
   }
 
-  getAddress(walletId?: number): {
+  async getAddress(walletId?: number): Promise<{
     walletId: number;
     address: string;
-  } {
-    const signer = this.getSigner(walletId);
+  }> {
+    const signer = await this.getSigner(walletId);
     return {
       walletId: signer.walletId,
       address: signer.address,
@@ -84,7 +151,7 @@ export class SignerService implements OnModuleInit {
   }
 
   async signMessage(message: string, walletId?: number): Promise<string> {
-    return this.getSigner(walletId).signer.signMessage(message);
+    return (await this.getSigner(walletId)).signer.signMessage(message);
   }
 
   async sendTransaction(
@@ -94,8 +161,9 @@ export class SignerService implements OnModuleInit {
     data: string = '0x',
     walletId?: number,
   ): Promise<SendTransactionResult> {
-    const tx = await this.getSigner(walletId)
-      .signer.connect(this.getProvider(chainId))
+    const signer = await this.getSigner(walletId);
+    const tx = await signer.signer
+      .connect(this.getProvider(chainId))
       .sendTransaction({
         to,
         value: BigInt(value),
@@ -134,8 +202,9 @@ export class SignerService implements OnModuleInit {
   }
 
   async getNonce(chainId: number, walletId?: number): Promise<number> {
+    const signer = await this.getSigner(walletId);
     return this.getProvider(chainId).getTransactionCount(
-      this.getSigner(walletId).address,
+      signer.address,
     );
   }
 }

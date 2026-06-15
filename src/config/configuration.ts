@@ -18,6 +18,34 @@ type PrivateKeyConfig = {
   key: string;
 };
 
+function parseSignerMode(): 'local' | 'openbao' {
+  const value = process.env.SIGNER_MODE;
+  if (value !== 'local' && value !== 'openbao') {
+    throw new Error('SIGNER_MODE must be either local or openbao');
+  }
+
+  return value;
+}
+
+function parseOpenBaoMount(value: string | undefined, fallback: string): string {
+  const mount = value?.trim() || fallback;
+  return mount.replace(/^\/+|\/+$/g, '');
+}
+
+function parseVaultTimeoutMs(): number {
+  const value = process.env.VAULT_TIMEOUT_MS;
+  if (!value) {
+    return 10000;
+  }
+
+  const timeoutMs = Number(value);
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1) {
+    throw new Error('VAULT_TIMEOUT_MS must be a positive integer');
+  }
+
+  return timeoutMs;
+}
+
 function parsePrivateKeys(): PrivateKeyConfig[] {
   const value = process.env.PRIVATE_KEYS;
   if (!value) {
@@ -67,17 +95,39 @@ function parsePrivateKeys(): PrivateKeyConfig[] {
   });
 }
 
-export default () => ({
-  signer: {
-    privateKeys: parsePrivateKeys(),
-    nodeUriMap: parseNodeUriMap(),
-  },
-  authentik: {
-    jwksUri: process.env.AUTHENTIK_JWKS_URI,
-    issuer: process.env.AUTHENTIK_ISSUER,
-    audience: process.env.AUTHENTIK_AUDIENCE,
-  },
-  port: parseInt(process.env.PORT || '3001', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
-  apiKeyFallback: process.env.API_KEY_FALLBACK,
-});
+export default () => {
+  const signerMode = parseSignerMode();
+
+  return {
+    signer: {
+      mode: signerMode,
+      privateKeys: signerMode === 'local' ? parsePrivateKeys() : [],
+      nodeUriMap: parseNodeUriMap(),
+      openBao: {
+        url: process.env.VAULT_URL,
+        token: process.env.VAULT_TOKEN,
+        ethereumMount: parseOpenBaoMount(
+          process.env.VAULT_ETHEREUM_MOUNT,
+          'ethereum',
+        ),
+        kvStorePath: parseOpenBaoMount(
+          process.env.VAULT_KV_STORE_PATH,
+          'secret',
+        ),
+        timeoutMs: parseVaultTimeoutMs(),
+      },
+    },
+    authentik: {
+      jwksUri: process.env.AUTHENTIK_JWKS_URI,
+      issuer: process.env.AUTHENTIK_ISSUER,
+      audience: process.env.AUTHENTIK_AUDIENCE,
+    },
+    port: parseInt(process.env.PORT || '3001', 10),
+    nodeEnv: process.env.NODE_ENV || 'development',
+    apiKeyFallback: process.env.API_KEY_FALLBACK,
+    tls: {
+      certPath: process.env.HTTP_CERT_PATH,
+      keyPath: process.env.HTTP_KEY_PATH,
+    },
+  };
+};

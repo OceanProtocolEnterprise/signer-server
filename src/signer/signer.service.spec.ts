@@ -38,6 +38,9 @@ const mockProvider = {
 
 jest.mock('ethers', () => ({
   ethers: {
+    AbstractSigner: class {
+      constructor(public provider?: unknown) {}
+    },
     JsonRpcProvider: jest.fn(() => mockProvider),
     Wallet: jest.fn((privateKey: string) => mockCreateWallet(privateKey)),
   },
@@ -61,6 +64,9 @@ describe('SignerService', () => {
           useValue: {
             get: jest.fn((key: string) => {
               switch (key) {
+                case 'signer.mode':
+                  return 'local';
+
                 case 'signer.privateKeys':
                   return [
                     {
@@ -78,6 +84,9 @@ describe('SignerService', () => {
                     '11155111': 'https://test.rpc',
                     '11155420': 'https://test.optimism.rpc',
                   };
+
+                case 'signer.openBao':
+                  return {};
 
                 default:
                   return undefined;
@@ -97,15 +106,15 @@ describe('SignerService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should return address', () => {
-    expect(service.getAddress()).toEqual({
+  it('should return address', async () => {
+    await expect(service.getAddress()).resolves.toEqual({
       walletId: 10,
       address: '0xMockAddress1',
     });
   });
 
-  it('should return address for selected wallet', () => {
-    expect(service.getAddress(20)).toEqual({
+  it('should return address for selected wallet', async () => {
+    await expect(service.getAddress(20)).resolves.toEqual({
       walletId: 20,
       address: '0xMockAddress2',
     });
@@ -233,8 +242,92 @@ describe('SignerService', () => {
   });
 
   it('should throw when wallet id is not configured', async () => {
-    expect(() => service.getAddress(999)).toThrow(
+    await expect(service.getAddress(999)).rejects.toThrow(
       'No wallet configured for id 999',
     );
+  });
+
+  it('should initialize OpenBao signer mode', async () => {
+    const vaultSigner = {
+      address: '0xVaultAddress',
+      signMessage: jest.fn(),
+      connect: jest.fn(),
+    };
+    const createOpenBaoSigners = jest.fn().mockResolvedValue(
+      new Map([
+        [
+          30,
+          {
+            walletId: 30,
+            address: '0xVaultAddress',
+            signer: vaultSigner,
+          },
+        ],
+      ]),
+    );
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SignerService,
+        {
+          provide: SignerFactory,
+          useValue: {
+            createLocalSigners: jest.fn(),
+            createOpenBaoSigners,
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              switch (key) {
+                case 'signer.mode':
+                  return 'openbao';
+
+                case 'signer.nodeUriMap':
+                  return {
+                    '11155111': 'https://test.rpc',
+                  };
+
+                case 'signer.privateKeys':
+                  return [];
+
+                case 'signer.openBao':
+                  return {
+                    url: 'http://openbao.test',
+                    token: 'vault-token',
+                    ethereumMount: 'ethereum',
+                    kvStorePath: 'secret',
+                    timeoutMs: 5000,
+                  };
+
+                default:
+                  return undefined;
+              }
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    const openBaoService = module.get<SignerService>(SignerService);
+
+    await openBaoService.onModuleInit();
+
+    await expect(openBaoService.getAddress()).rejects.toThrow(
+      'walletId is required when SIGNER_MODE=openbao',
+    );
+    await expect(openBaoService.getAddress(30)).resolves.toEqual({
+      walletId: 30,
+      address: '0xVaultAddress',
+    });
+    expect(createOpenBaoSigners).toHaveBeenCalledWith({
+      walletId: 30,
+      url: 'http://openbao.test',
+      token: 'vault-token',
+      ethereumMount: 'ethereum',
+      kvStorePath: 'secret',
+      timeoutMs: 5000,
+    });
   });
 });

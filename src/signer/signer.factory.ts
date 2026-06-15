@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
 import {
   ManagedSigner,
+  OpenBaoSignerConfig,
   SignerKeyConfig,
 } from './interfaces/signer-config.interface';
+import { OpenBaoVaultSigner } from './openbao-vault.signer';
 
 @Injectable()
 export class SignerFactory {
-  createSigners(privateKeys: SignerKeyConfig[]): Map<number, ManagedSigner> {
+  createLocalSigners(
+    privateKeys: SignerKeyConfig[],
+  ): Map<number, ManagedSigner> {
     const signers = new Map<number, ManagedSigner>();
 
     privateKeys.forEach((privateKey) => {
@@ -19,6 +23,31 @@ export class SignerFactory {
     });
 
     return signers;
+  }
+
+  async createOpenBaoSigners(
+    config: OpenBaoSignerConfig,
+  ): Promise<Map<number, ManagedSigner>> {
+    const signer = new OpenBaoVaultSigner(
+      config.url,
+      config.token,
+      config.ethereumMount,
+      config.kvStorePath,
+      config.walletId,
+      config.timeoutMs,
+    );
+    const address = await signer.getAddress();
+
+    return new Map([
+      [
+        config.walletId,
+        {
+          walletId: config.walletId,
+          address,
+          signer,
+        },
+      ],
+    ]);
   }
 
   private createLocalSigner(privateKey: SignerKeyConfig): ManagedSigner {

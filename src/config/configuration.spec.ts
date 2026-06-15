@@ -12,6 +12,7 @@ describe('configuration', () => {
   });
 
   it('parses multiple private keys', () => {
+    process.env.SIGNER_MODE = 'local';
     process.env.PRIVATE_KEYS = JSON.stringify([
       {
         walletId: 10,
@@ -33,9 +34,72 @@ describe('configuration', () => {
         key: `0x${'2'.repeat(64)}`,
       },
     ]);
+    expect(configuration().signer.mode).toBe('local');
+  });
+
+  it('parses OpenBao signer config', () => {
+    process.env.SIGNER_MODE = 'openbao';
+    process.env.PRIVATE_KEYS = 'not-json';
+    process.env.VAULT_URL = 'http://openbao.test';
+    process.env.VAULT_TOKEN = 'vault-token';
+    process.env.VAULT_ETHEREUM_MOUNT = '/ethereum/';
+    process.env.VAULT_KV_STORE_PATH = '/secret/';
+    process.env.VAULT_TIMEOUT_MS = '5000';
+
+    expect(configuration().signer).toMatchObject({
+      mode: 'openbao',
+      privateKeys: [],
+      openBao: {
+        url: 'http://openbao.test',
+        token: 'vault-token',
+        ethereumMount: 'ethereum',
+        kvStorePath: 'secret',
+        timeoutMs: 5000,
+      },
+    });
+  });
+
+  it('uses the default OpenBao timeout', () => {
+    process.env.SIGNER_MODE = 'openbao';
+
+    expect(configuration().signer.openBao.timeoutMs).toBe(10000);
+  });
+
+  it('rejects missing signer mode', () => {
+    delete process.env.SIGNER_MODE;
+
+    expect(() => configuration()).toThrow(
+      'SIGNER_MODE must be either local or openbao',
+    );
+  });
+
+  it('rejects empty signer mode', () => {
+    process.env.SIGNER_MODE = '';
+
+    expect(() => configuration()).toThrow(
+      'SIGNER_MODE must be either local or openbao',
+    );
+  });
+
+  it('rejects invalid signer mode', () => {
+    process.env.SIGNER_MODE = 'vault';
+
+    expect(() => configuration()).toThrow(
+      'SIGNER_MODE must be either local or openbao',
+    );
+  });
+
+  it('rejects invalid OpenBao timeout', () => {
+    process.env.SIGNER_MODE = 'openbao';
+    process.env.VAULT_TIMEOUT_MS = '0';
+
+    expect(() => configuration()).toThrow(
+      'VAULT_TIMEOUT_MS must be a positive integer',
+    );
   });
 
   it('rejects duplicate private key ids', () => {
+    process.env.SIGNER_MODE = 'local';
     process.env.PRIVATE_KEYS = JSON.stringify([
       {
         walletId: 10,
@@ -53,6 +117,7 @@ describe('configuration', () => {
   });
 
   it('rejects invalid private key format', () => {
+    process.env.SIGNER_MODE = 'local';
     process.env.PRIVATE_KEYS = JSON.stringify([
       {
         walletId: 10,
@@ -63,5 +128,16 @@ describe('configuration', () => {
     expect(() => configuration()).toThrow(
       'PRIVATE_KEYS[0].key must be a 32-byte hex private key',
     );
+  });
+
+  it('parses HTTPS certificate paths', () => {
+    process.env.SIGNER_MODE = 'openbao';
+    process.env.HTTP_CERT_PATH = '/etc/ssl/certs/cert.pem';
+    process.env.HTTP_KEY_PATH = '/etc/ssl/certs/key.pem';
+
+    expect(configuration().tls).toEqual({
+      certPath: '/etc/ssl/certs/cert.pem',
+      keyPath: '/etc/ssl/certs/key.pem',
+    });
   });
 });

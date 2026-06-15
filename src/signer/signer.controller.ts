@@ -39,8 +39,8 @@ import { Public } from '../common/decorators/public.decorator';
 export class SignerController {
   constructor(private readonly signerService: SignerService) {}
 
-  private parseOptionalWalletId(walletId?: string): number | undefined {
-    if (walletId === undefined) {
+  private parseOptionalWalletId(walletId?: string | number): number | undefined {
+    if (walletId === undefined || walletId === null || walletId === '') {
       return undefined;
     }
 
@@ -50,6 +50,17 @@ export class SignerController {
     }
 
     return parsedWalletId;
+  }
+
+  private getRequestWalletId(req: any): number | undefined {
+    return this.parseOptionalWalletId(req.user?.orgWalletId);
+  }
+
+  private resolveWalletId(
+    req: any,
+    walletId?: string | number,
+  ): number | undefined {
+    return this.parseOptionalWalletId(walletId) ?? this.getRequestWalletId(req);
   }
 
   @Get('health')
@@ -69,18 +80,25 @@ export class SignerController {
   @Get('address')
   @ApiOperation({ summary: 'Get signer wallet address' })
   @ApiResponse({ status: 200, type: AddressResponse })
-  getAddress(@Query('walletId') walletId?: string): AddressResponse {
-    return this.signerService.getAddress(this.parseOptionalWalletId(walletId));
+  async getAddress(
+    @Req() req: any,
+    @Query('walletId') walletId?: string,
+  ): Promise<AddressResponse> {
+    return this.signerService.getAddress(this.resolveWalletId(req, walletId));
   }
 
   @Post('sign-message')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign a message' })
-  async signMessage(@Body() dto: SignMessageDto): Promise<SignMessageResponse> {
-    const signer = this.signerService.getAddress(dto.walletId);
+  async signMessage(
+    @Req() req: any,
+    @Body() dto: SignMessageDto,
+  ): Promise<SignMessageResponse> {
+    const walletId = this.resolveWalletId(req, dto.walletId);
+    const signer = await this.signerService.getAddress(walletId);
     const signature = await this.signerService.signMessage(
       dto.message,
-      dto.walletId,
+      walletId,
     );
     return { signature, ...signer };
   }
@@ -88,14 +106,16 @@ export class SignerController {
   @Post('send-transaction')
   @ApiOperation({ summary: 'Send a transaction' })
   async sendTransaction(
+    @Req() req: any,
     @Body() dto: SendTransactionDto,
   ): Promise<SendTransactionResponse> {
+    const walletId = this.resolveWalletId(req, dto.walletId);
     const result = await this.signerService.sendTransaction(
       dto.chainId,
       dto.to,
       dto.value,
       dto.data,
-      dto.walletId,
+      walletId,
     );
     return result;
   }
@@ -114,12 +134,13 @@ export class SignerController {
   @Get('nonce')
   @ApiOperation({ summary: 'Get current nonce of the signer wallet' })
   async getNonce(
+    @Req() req: any,
     @Query('chainId', ParseIntPipe) chainId: number,
     @Query('walletId') walletId?: string,
   ): Promise<NonceResponse> {
     const nonce = await this.signerService.getNonce(
       chainId,
-      this.parseOptionalWalletId(walletId),
+      this.resolveWalletId(req, walletId),
     );
     return { nonce };
   }
