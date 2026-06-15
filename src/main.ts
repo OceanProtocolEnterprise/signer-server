@@ -32,7 +32,7 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // CORS
+  // CORS policies - adjust as needed for your deployment environment
   app.enableCors();
 
   // Swagger
