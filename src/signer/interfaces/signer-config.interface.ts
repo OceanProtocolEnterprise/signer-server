@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 
-export type SignerMode = 'local' | 'openbao';
+export type SignerMode = 'local' | 'vault';
 
 export type SignerKeyConfig = {
   walletId: number;

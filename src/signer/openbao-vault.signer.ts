@@ -20,7 +20,7 @@ type VaultSignTransactionResponse = {
   };
 };
 
-const DEFAULT_OPENBAO_TIMEOUT_MS = 10000;
+const DEFAULT_VAULT_TIMEOUT_MS = 10000;
 
 export class OpenBaoVaultSigner extends ethers.AbstractSigner {
   private readonly vaultUrl: string;
@@ -32,7 +32,7 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
     private readonly ethereumMount: string,
     private readonly kvStorePath: string,
     private readonly walletId: number,
-    private readonly timeoutMs = DEFAULT_OPENBAO_TIMEOUT_MS,
+    private readonly timeoutMs = DEFAULT_VAULT_TIMEOUT_MS,
     provider?: ethers.Provider,
   ) {
     super(provider);
@@ -65,14 +65,14 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
 
       if (!response.ok) {
         throw new Error(
-          `OpenBao request failed (${response.status}): ${await response.text()}`,
+          `Vault request failed (${response.status}): ${await response.text()}`,
         );
       }
 
       return (await response.json()) as T;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`OpenBao request timed out after ${this.timeoutMs}ms`);
+        throw new Error(`Vault request timed out after ${this.timeoutMs}ms`);
       }
       throw error;
     } finally {
@@ -133,11 +133,11 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
       }
     }
 
-    throw new Error('Could not determine recovery id for OpenBao signature');
+    throw new Error('Could not determine recovery id for Vault signature');
   }
 
   async signTransaction(_tx: ethers.TransactionRequest): Promise<string> {
-    throw new Error('Use sendTransaction for OpenBao transaction signing');
+    throw new Error('Use sendTransaction for Vault transaction signing');
   }
 
   async sendTransaction(
@@ -145,7 +145,7 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
   ): Promise<ethers.TransactionResponse> {
     if (!this.provider) {
       throw new Error(
-        'OpenBao signer requires a provider to send transactions',
+        'Vault signer requires a provider to send transactions',
       );
     }
 
@@ -182,7 +182,7 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
   }
 
   async signTypedData(): Promise<string> {
-    throw new Error('OpenBao typed data signing is not supported');
+    throw new Error('Vault typed data signing is not supported');
   }
 
   connect(provider: ethers.Provider): OpenBaoVaultSigner {

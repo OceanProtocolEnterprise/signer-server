@@ -6,7 +6,7 @@ describe('OpenBaoVaultSigner', () => {
     jest.restoreAllMocks();
   });
 
-  it('times out OpenBao requests', async () => {
+  it('times out Vault requests', async () => {
     jest.useFakeTimers();
     jest.spyOn(global, 'fetch').mockImplementation(
       (_url, init) =>
@@ -20,7 +20,7 @@ describe('OpenBaoVaultSigner', () => {
     );
 
     const signer = new OpenBaoVaultSigner(
-      'http://openbao.test',
+      'http://vault.test',
       'vault-token',
       'ethereum',
       'secret',
@@ -32,7 +32,7 @@ describe('OpenBaoVaultSigner', () => {
     jest.advanceTimersByTime(10);
 
     await expect(addressPromise).rejects.toThrow(
-      'OpenBao request timed out after 10ms',
+      'Vault request timed out after 10ms',
     );
   });
 
@@ -49,7 +49,7 @@ describe('OpenBaoVaultSigner', () => {
     } as unknown as Response);
 
     const signer = new OpenBaoVaultSigner(
-      'http://openbao.test/',
+      'http://vault.test/',
       'vault-token',
       '/ethereum/',
       '/secret/',
@@ -60,7 +60,7 @@ describe('OpenBaoVaultSigner', () => {
       '0xcf3185a502be4b5eb2c4eb81646ecf7dd0ac2f22',
     );
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://openbao.test/v1/secret/data/wallets/by-id/10',
+      'http://vault.test/v1/secret/data/wallets/by-id/10',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({

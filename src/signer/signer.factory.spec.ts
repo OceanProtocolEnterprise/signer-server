@@ -68,7 +68,7 @@ describe('SignerFactory', () => {
     ).toThrow('Duplicate wallet id 10');
   });
 
-  it('should create an OpenBao signer from vault config', async () => {
+  it('should create a Vault signer from vault config', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: true,
       json: jest.fn().mockResolvedValue({
@@ -82,7 +82,7 @@ describe('SignerFactory', () => {
 
     const signers = await factory.createOpenBaoSigners({
       walletId: 30,
-      url: 'http://openbao.test',
+      url: 'http://vault.test',
       token: 'vault-token',
       ethereumMount: 'ethereum',
       kvStorePath: 'secret',
@@ -94,7 +94,7 @@ describe('SignerFactory', () => {
       address: '0xVaultAddress',
     });
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://openbao.test/v1/secret/data/wallets/by-id/30',
+      'http://vault.test/v1/secret/data/wallets/by-id/30',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({

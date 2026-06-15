@@ -37,20 +37,20 @@ describe('configuration', () => {
     expect(configuration().signer.mode).toBe('local');
   });
 
-  it('parses OpenBao signer config', () => {
-    process.env.SIGNER_MODE = 'openbao';
+  it('parses Vault signer config', () => {
+    process.env.SIGNER_MODE = 'vault';
     process.env.PRIVATE_KEYS = 'not-json';
-    process.env.VAULT_URL = 'http://openbao.test';
+    process.env.VAULT_URL = 'http://vault.test';
     process.env.VAULT_TOKEN = 'vault-token';
     process.env.VAULT_ETHEREUM_MOUNT = '/ethereum/';
     process.env.VAULT_KV_STORE_PATH = '/secret/';
     process.env.VAULT_TIMEOUT_MS = '5000';
 
     expect(configuration().signer).toMatchObject({
-      mode: 'openbao',
+      mode: 'vault',
       privateKeys: [],
       openBao: {
-        url: 'http://openbao.test',
+        url: 'http://vault.test',
         token: 'vault-token',
         ethereumMount: 'ethereum',
         kvStorePath: 'secret',
@@ -59,8 +59,8 @@ describe('configuration', () => {
     });
   });
 
-  it('uses the default OpenBao timeout', () => {
-    process.env.SIGNER_MODE = 'openbao';
+  it('uses the default Vault timeout', () => {
+    process.env.SIGNER_MODE = 'vault';
 
     expect(configuration().signer.openBao.timeoutMs).toBe(10000);
   });
@@ -69,7 +69,7 @@ describe('configuration', () => {
     delete process.env.SIGNER_MODE;
 
     expect(() => configuration()).toThrow(
-      'SIGNER_MODE must be either local or openbao',
+      'SIGNER_MODE must be either local or vault',
     );
   });
 
@@ -77,20 +77,20 @@ describe('configuration', () => {
     process.env.SIGNER_MODE = '';
 
     expect(() => configuration()).toThrow(
-      'SIGNER_MODE must be either local or openbao',
+      'SIGNER_MODE must be either local or vault',
     );
   });
 
   it('rejects invalid signer mode', () => {
-    process.env.SIGNER_MODE = 'vault';
+    process.env.SIGNER_MODE = 'remote';
 
     expect(() => configuration()).toThrow(
-      'SIGNER_MODE must be either local or openbao',
+      'SIGNER_MODE must be either local or vault',
     );
   });
 
-  it('rejects invalid OpenBao timeout', () => {
-    process.env.SIGNER_MODE = 'openbao';
+  it('rejects invalid Vault timeout', () => {
+    process.env.SIGNER_MODE = 'vault';
     process.env.VAULT_TIMEOUT_MS = '0';
 
     expect(() => configuration()).toThrow(
@@ -131,7 +131,7 @@ describe('configuration', () => {
   });
 
   it('parses HTTPS certificate paths', () => {
-    process.env.SIGNER_MODE = 'openbao';
+    process.env.SIGNER_MODE = 'vault';
     process.env.HTTP_CERT_PATH = '/etc/ssl/certs/cert.pem';
     process.env.HTTP_KEY_PATH = '/etc/ssl/certs/key.pem';
 

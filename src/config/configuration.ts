@@ -18,16 +18,16 @@ type PrivateKeyConfig = {
   key: string;
 };
 
-function parseSignerMode(): 'local' | 'openbao' {
+function parseSignerMode(): 'local' | 'vault' {
   const value = process.env.SIGNER_MODE;
-  if (value !== 'local' && value !== 'openbao') {
-    throw new Error('SIGNER_MODE must be either local or openbao');
+  if (value !== 'local' && value !== 'vault') {
+    throw new Error('SIGNER_MODE must be either local or vault');
   }
 
   return value;
 }
 
-function parseOpenBaoMount(value: string | undefined, fallback: string): string {
+function parseVaultMount(value: string | undefined, fallback: string): string {
   const mount = value?.trim() || fallback;
   return mount.replace(/^\/+|\/+$/g, '');
 }
@@ -106,11 +106,11 @@ export default () => {
       openBao: {
         url: process.env.VAULT_URL,
         token: process.env.VAULT_TOKEN,
-        ethereumMount: parseOpenBaoMount(
+        ethereumMount: parseVaultMount(
           process.env.VAULT_ETHEREUM_MOUNT,
           'ethereum',
         ),
-        kvStorePath: parseOpenBaoMount(
+        kvStorePath: parseVaultMount(
           process.env.VAULT_KV_STORE_PATH,
           'secret',
         ),

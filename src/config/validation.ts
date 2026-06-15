@@ -8,8 +8,8 @@ import {
 } from 'class-validator';
 
 class EnvironmentVariables {
-  @IsIn(['local', 'openbao'])
-  SIGNER_MODE: 'local' | 'openbao';
+  @IsIn(['local', 'vault'])
+  SIGNER_MODE: 'local' | 'vault';
 
   @IsOptional()
   @IsString()
@@ -64,8 +64,8 @@ class EnvironmentVariables {
 }
 
 export function validate(config: Record<string, unknown>) {
-  if (config.SIGNER_MODE !== 'local' && config.SIGNER_MODE !== 'openbao') {
-    throw new Error('SIGNER_MODE must be either local or openbao');
+  if (config.SIGNER_MODE !== 'local' && config.SIGNER_MODE !== 'vault') {
+    throw new Error('SIGNER_MODE must be either local or vault');
   }
 
   const validatedConfig = plainToClass(EnvironmentVariables, config, {
@@ -83,7 +83,7 @@ export function validate(config: Record<string, unknown>) {
     throw new Error('PRIVATE_KEYS is required when SIGNER_MODE=local');
   }
 
-  if (signerMode === 'openbao') {
+  if (signerMode === 'vault') {
     const missingVaultVars = [
       'VAULT_URL',
       'VAULT_TOKEN',
@@ -91,7 +91,7 @@ export function validate(config: Record<string, unknown>) {
 
     if (missingVaultVars.length) {
       throw new Error(
-        `${missingVaultVars.join(', ')} required when SIGNER_MODE=openbao`,
+        `${missingVaultVars.join(', ')} required when SIGNER_MODE=vault`,
       );
     }
   }

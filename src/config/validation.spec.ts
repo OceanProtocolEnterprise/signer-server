@@ -15,19 +15,19 @@ describe('config validation', () => {
     const { SIGNER_MODE: _signerMode, ...config } = validBaseConfig;
 
     expect(() => validate(config)).toThrow(
-      'SIGNER_MODE must be either local or openbao',
+      'SIGNER_MODE must be either local or vault',
     );
   });
 
   it('rejects empty signer mode', () => {
     expect(() => validate({ ...validBaseConfig, SIGNER_MODE: '' })).toThrow(
-      'SIGNER_MODE must be either local or openbao',
+      'SIGNER_MODE must be either local or vault',
     );
   });
 
   it('rejects invalid signer mode', () => {
-    expect(() => validate({ ...validBaseConfig, SIGNER_MODE: 'vault' })).toThrow(
-      'SIGNER_MODE must be either local or openbao',
+    expect(() => validate({ ...validBaseConfig, SIGNER_MODE: 'remote' })).toThrow(
+      'SIGNER_MODE must be either local or vault',
     );
   });
 });

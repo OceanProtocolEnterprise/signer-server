@@ -247,8 +247,8 @@ describe('SignerService', () => {
     );
   });
 
-  it('should initialize OpenBao signer mode', async () => {
-    const vaultSigner = {
+  it('should initialize Vault signer mode', async () => {
+    const openBaoSigner = {
       address: '0xVaultAddress',
       signMessage: jest.fn(),
       connect: jest.fn(),
@@ -260,7 +260,7 @@ describe('SignerService', () => {
           {
             walletId: 30,
             address: '0xVaultAddress',
-            signer: vaultSigner,
+            signer: openBaoSigner,
           },
         ],
       ]),
@@ -282,7 +282,7 @@ describe('SignerService', () => {
             get: jest.fn((key: string) => {
               switch (key) {
                 case 'signer.mode':
-                  return 'openbao';
+                  return 'vault';
 
                 case 'signer.nodeUriMap':
                   return {
@@ -294,7 +294,7 @@ describe('SignerService', () => {
 
                 case 'signer.openBao':
                   return {
-                    url: 'http://openbao.test',
+                    url: 'http://vault.test',
                     token: 'vault-token',
                     ethereumMount: 'ethereum',
                     kvStorePath: 'secret',
@@ -310,20 +310,20 @@ describe('SignerService', () => {
       ],
     }).compile();
 
-    const openBaoService = module.get<SignerService>(SignerService);
+    const vaultService = module.get<SignerService>(SignerService);
 
-    await openBaoService.onModuleInit();
+    await vaultService.onModuleInit();
 
-    await expect(openBaoService.getAddress()).rejects.toThrow(
-      'walletId is required when SIGNER_MODE=openbao',
+    await expect(vaultService.getAddress()).rejects.toThrow(
+      'walletId is required when SIGNER_MODE=vault',
     );
-    await expect(openBaoService.getAddress(30)).resolves.toEqual({
+    await expect(vaultService.getAddress(30)).resolves.toEqual({
       walletId: 30,
       address: '0xVaultAddress',
     });
     expect(createOpenBaoSigners).toHaveBeenCalledWith({
       walletId: 30,
-      url: 'http://openbao.test',
+      url: 'http://vault.test',
       token: 'vault-token',
       ethereumMount: 'ethereum',
       kvStorePath: 'secret',

@@ -40,7 +40,7 @@ export class SignerService implements OnModuleInit {
       {};
 
     if (!signerMode) {
-      throw new Error('SIGNER_MODE must be either local or openbao');
+      throw new Error('SIGNER_MODE must be either local or vault');
     }
 
     if (!Object.keys(nodeUriMap).length) {
@@ -65,7 +65,7 @@ export class SignerService implements OnModuleInit {
         !openBaoConfig.timeoutMs
       ) {
         throw new Error(
-          'Missing OpenBao signer configuration (VAULT_URL, VAULT_TOKEN, VAULT_ETHEREUM_MOUNT, VAULT_KV_STORE_PATH, or VAULT_TIMEOUT_MS)',
+          'Missing Vault signer configuration (VAULT_URL, VAULT_TOKEN, VAULT_ETHEREUM_MOUNT, VAULT_KV_STORE_PATH, or VAULT_TIMEOUT_MS)',
         );
       }
 
@@ -76,7 +76,7 @@ export class SignerService implements OnModuleInit {
         kvStorePath: openBaoConfig.kvStorePath,
         timeoutMs: openBaoConfig.timeoutMs,
       };
-      this.logger.log('OpenBao signer mode initialized');
+      this.logger.log('Vault signer mode initialized');
     }
 
     this.signers.forEach(({ walletId, address }) => {
@@ -109,16 +109,16 @@ export class SignerService implements OnModuleInit {
     const resolvedWalletId = walletId ?? this.defaultWalletId;
     const signer = this.signers.get(resolvedWalletId);
     if (!signer) {
-      if (this.signerMode !== 'openbao') {
+      if (this.signerMode !== 'vault') {
         throw new Error(`No wallet configured for id ${resolvedWalletId}`);
       }
 
       if (!walletId) {
-        throw new Error('walletId is required when SIGNER_MODE=openbao');
+        throw new Error('walletId is required when SIGNER_MODE=vault');
       }
 
       if (!this.openBaoConfig) {
-        throw new Error('OpenBao signer configuration is not initialized');
+        throw new Error('Vault signer configuration is not initialized');
       }
 
       const openBaoSigners = await this.signerFactory.createOpenBaoSigners({
@@ -127,12 +127,12 @@ export class SignerService implements OnModuleInit {
       });
       const openBaoSigner = openBaoSigners.get(walletId);
       if (!openBaoSigner) {
-        throw new Error(`No OpenBao wallet resolved for id ${walletId}`);
+        throw new Error(`No Vault wallet resolved for id ${walletId}`);
       }
 
       this.signers.set(walletId, openBaoSigner);
       this.logger.log(
-        `OpenBao wallet ${walletId} resolved with address: ${openBaoSigner.address}`,
+        `Vault wallet ${walletId} resolved with address: ${openBaoSigner.address}`,
       );
       return openBaoSigner;
     }
