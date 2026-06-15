@@ -17,7 +17,7 @@ describe('JWT Authentication', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('GET /address should reject requests without JWT', async () => {
