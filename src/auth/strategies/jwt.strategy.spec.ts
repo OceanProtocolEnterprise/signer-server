@@ -1,4 +1,5 @@
 import { JwtStrategy } from './jwt.strategy';
+import { ConfigService } from '@nestjs/config';
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
@@ -17,16 +18,15 @@ describe('JwtStrategy', () => {
             return 'client-id';
         }
       }),
-    } as any);
+    } as Pick<ConfigService, 'get'> as ConfigService);
   });
 
   it('should validate payload', async () => {
-    const result =
-      await strategy.validate({
-        sub: '123',
-        email: 'test@test.com',
-        orgId: 'org1',
-      });
+    const result = await strategy.validate({
+      sub: '123',
+      email: 'test@test.com',
+      orgId: 'org1',
+    });
 
     expect(result.sub).toBe('123');
   });

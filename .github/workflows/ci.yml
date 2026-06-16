@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - feat/**
+      - feat/*
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit Tests
+        run: npm test
+
+      - name: E2E Tests
+        run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
+          NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
+          AUTHENTIK_JWKS_URI: ${{ vars.AUTHENTIK_JWKS_URI }}
+          AUTHENTIK_ISSUER: ${{ vars.AUTHENTIK_ISSUER }}
+          AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
+          CHAIN_ID: ${{ vars.CHAIN_ID }}
+          ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
+          SIGNER_MODE: ${{ vars.SIGNER_MODE }}
+          PORT: 3001
+
+      - name: Coverage
+        run: npm run test:cov

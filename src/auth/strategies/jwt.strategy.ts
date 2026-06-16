@@ -1,17 +1,41 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 
+type AuthentikJwtPayload = {
+  sub?: string;
+  email?: string;
+  preferred_username?: string;
+  nickname?: string;
+  orgId?: string;
+  orgWalletId?: number;
+  groups?: string[];
+  scope?: string;
+};
+
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class JwtStrategy extends PassportStrategy(
+  Strategy,
+  'jwt',
+) {
   private readonly logger = new Logger(JwtStrategy.name);
 
   constructor(configService: ConfigService) {
-    const jwksUri = configService.get<string>('authentik.jwksUri');
-    const issuer = configService.get<string>('authentik.issuer');
-    const audience = configService.get<string>('authentik.audience');
+    const jwksUri = configService.get<string>(
+      'authentik.jwksUri',
+    );
+    const issuer = configService.get<string>(
+      'authentik.issuer',
+    );
+    const audience = configService.get<string>(
+      'authentik.audience',
+    );
 
     if (!jwksUri || !issuer || !audience) {
       throw new Error('Authentik configuration missing');
@@ -26,7 +50,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         rateLimit: true,
         jwksRequestsPerMinute: 5,
       }),
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest:
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
       issuer,
       audience,
       algorithms: ['RS256'],
@@ -39,9 +64,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     this.logger.log(`Audience: ${audience}`);
   }
 
-  async validate(payload: any) {
+  async validate(payload: AuthentikJwtPayload) {
     if (!payload.sub) {
-      throw new UnauthorizedException('Invalid token payload');
+      throw new UnauthorizedException(
+        'Invalid token payload',
+      );
     }
 
     this.logger.log(
@@ -52,8 +79,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       sub: payload.sub,
       email: payload.email,
       username:
-        payload.preferred_username ??
-        payload.nickname,
+        payload.preferred_username ?? payload.nickname,
       orgId: payload.orgId,
       orgWalletId: payload.orgWalletId,
       groups: payload.groups ?? [],

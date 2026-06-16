@@ -4,17 +4,20 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
+import { Request } from 'express';
 
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
+type AuthenticatedUser = {
+  email?: string;
+};
+
 @Injectable()
 export class AuthentikGuard extends AuthGuard('jwt') {
-  private readonly logger = new Logger(
-    AuthentikGuard.name,
-  );
+  private readonly logger = new Logger(AuthentikGuard.name);
 
   constructor(private reflector: Reflector) {
     super();
@@ -24,18 +27,16 @@ export class AuthentikGuard extends AuthGuard('jwt') {
     const isPublic =
       this.reflector.getAllAndOverride<boolean>(
         IS_PUBLIC_KEY,
-        [
-          context.getHandler(),
-          context.getClass(),
-        ],
+        [context.getHandler(), context.getClass()],
       );
 
     if (isPublic) {
       return true;
     }
 
-    const req =
-      context.switchToHttp().getRequest();
+    const req = context
+      .switchToHttp()
+      .getRequest<Request>();
 
     this.logger.log(
       `Authenticating request: ${req.method} ${req.url}`,
@@ -44,10 +45,12 @@ export class AuthentikGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(
-    err: any,
-    user: any,
-    info: any,
+  handleRequest<TUser = unknown>(
+    err: Error | null,
+    user: TUser,
+    info?: { message?: string },
+    _context?: ExecutionContext,
+    _status?: unknown,
   ) {
     if (err || !user) {
       this.logger.error(
@@ -63,8 +66,9 @@ export class AuthentikGuard extends AuthGuard('jwt') {
       );
     }
 
+    const authenticatedUser = user as AuthenticatedUser;
     this.logger.log(
-      `Authenticated: ${user.email}`,
+      `Authenticated: ${authenticatedUser.email}`,
     );
 
     return user;
