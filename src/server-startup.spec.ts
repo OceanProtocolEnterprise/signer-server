@@ -41,7 +41,9 @@ describe('server startup', () => {
   it('returns TLS options when both files can be loaded', () => {
     const certPath = path.join(tempDir, 'cert.pem');
     const keyPath = path.join(tempDir, 'key.pem');
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     fs.writeFileSync(certPath, 'cert-content');
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     fs.writeFileSync(keyPath, 'key-content');
 
     expect(getTlsOptions({ certPath, keyPath })).toEqual({

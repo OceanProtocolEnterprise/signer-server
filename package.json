@@ -40,7 +40,8 @@
     "rxjs": "^7.8.1"
   },
   "overrides": {
-    "ws": "8.20.1"
+    "js-yaml": "4.2.0",
+    "ws": "8.21.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.23",

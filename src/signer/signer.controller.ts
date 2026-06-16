@@ -23,6 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import {
   AddressResponse,
   SignMessageResponse,
@@ -31,6 +32,10 @@ import {
   NonceResponse,
 } from './interfaces/signer-responses.interface';
 import { Public } from '../common/decorators/public.decorator';
+
+type AuthenticatedRequest = Request & {
+  user?: unknown;
+};
 
 @ApiTags('signer')
 @Controller()
@@ -89,7 +94,7 @@ export class SignerController {
   }
 
   @Get('me')
-  getMe(@Req() req: any) {
+  getMe(@Req() req: AuthenticatedRequest) {
     return req.user;
   }
 

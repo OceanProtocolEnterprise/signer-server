@@ -12,12 +12,14 @@ describe('config validation', () => {
   };
 
   it('rejects missing signer mode', () => {
-    const { SIGNER_MODE: _signerMode, ...config } =
-      validBaseConfig;
+    const config: Partial<typeof validBaseConfig> = {
+      ...validBaseConfig,
+    };
+    delete config.SIGNER_MODE;
 
-    expect(() => validate(config)).toThrow(
-      'SIGNER_MODE must be either local or vault',
-    );
+    expect(() =>
+      validate(config as Record<string, unknown>),
+    ).toThrow('SIGNER_MODE must be either local or vault');
   });
 
   it('rejects empty signer mode', () => {

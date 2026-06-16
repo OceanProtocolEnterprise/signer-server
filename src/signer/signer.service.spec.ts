@@ -16,7 +16,14 @@ const mockSendTransaction = jest.fn().mockResolvedValue({
   wait: mockWait,
 });
 
-const mockWallets = new Map<string, any>();
+type MockWallet = {
+  address: string;
+  signMessage: jest.Mock;
+  sendTransaction: jest.Mock;
+  connect: jest.Mock;
+};
+
+const mockWallets = new Map<string, MockWallet>();
 
 function mockCreateWallet(privateKey: string) {
   const signerNumber = privateKey.endsWith('2'.repeat(64))
@@ -133,7 +140,7 @@ describe('SignerService', () => {
 
     expect(signature).toBe('0xsigned1');
     expect(
-      mockWallets.get(`0x${'1'.repeat(64)}`).signMessage,
+      mockWallets.get(`0x${'1'.repeat(64)}`)!.signMessage,
     ).toHaveBeenCalledWith('hello');
   });
 
@@ -145,7 +152,7 @@ describe('SignerService', () => {
 
     expect(signature).toBe('0xsigned2');
     expect(
-      mockWallets.get(`0x${'2'.repeat(64)}`).signMessage,
+      mockWallets.get(`0x${'2'.repeat(64)}`)!.signMessage,
     ).toHaveBeenCalledWith('hello');
   });
 
@@ -167,7 +174,7 @@ describe('SignerService', () => {
       status: 1,
     });
     expect(
-      mockWallets.get(`0x${'1'.repeat(64)}`).connect,
+      mockWallets.get(`0x${'1'.repeat(64)}`)!.connect,
     ).toHaveBeenCalledWith(mockProvider);
     expect(mockSendTransaction).toHaveBeenCalledWith({
       to: '0xto',
@@ -186,7 +193,7 @@ describe('SignerService', () => {
     );
 
     expect(
-      mockWallets.get(`0x${'2'.repeat(64)}`).connect,
+      mockWallets.get(`0x${'2'.repeat(64)}`)!.connect,
     ).toHaveBeenCalledWith(mockProvider);
   });
 

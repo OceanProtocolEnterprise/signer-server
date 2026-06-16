@@ -1,4 +1,8 @@
-const mockWallets = new Map<string, any>();
+type MockWallet = {
+  address: string;
+};
+
+const mockWallets = new Map<string, MockWallet>();
 
 function mockCreateWallet(privateKey: string) {
   const signerNumber = privateKey.endsWith('2'.repeat(64))

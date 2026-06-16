@@ -5,6 +5,7 @@ import {
   CallHandler,
   Logger,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
@@ -17,8 +18,10 @@ export class LoggingInterceptor implements NestInterceptor {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<any> {
-    const req = context.switchToHttp().getRequest();
+  ): Observable<unknown> {
+    const req = context
+      .switchToHttp()
+      .getRequest<Request>();
     const { method, url, ip } = req;
     const start = Date.now();
 
