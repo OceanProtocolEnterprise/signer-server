@@ -1,9 +1,9 @@
 // src/signer/interfaces/signer-responses.interface.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AddressResponse {
-  @ApiProperty()
-  walletId: number;
+  @ApiPropertyOptional()
+  walletId?: number;
   @ApiProperty()
   address: string;
 }
@@ -11,8 +11,8 @@ export class AddressResponse {
 export class SignMessageResponse {
   @ApiProperty()
   signature: string;
-  @ApiProperty()
-  walletId: number;
+  @ApiPropertyOptional()
+  walletId?: number;
   @ApiProperty()
   address: string;
 }
