@@ -14,6 +14,8 @@ import {
   shouldWarnAboutPartialTlsConfig,
 } from './server-startup';
 
+const SWAGGER_PATH = 'api';
+
 async function bootstrap() {
   const tlsPaths = getTlsPaths();
   const tlsOptions = getTlsOptions(tlsPaths);
@@ -35,7 +37,6 @@ async function bootstrap() {
   // CORS policies - adjust as needed for your deployment environment
   app.enableCors();
 
-  // Swagger
   const config = new DocumentBuilder()
     .setTitle('Signer Service')
     .setDescription(
@@ -48,7 +49,11 @@ async function bootstrap() {
     app,
     config,
   );
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup(SWAGGER_PATH, app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 
   const port = getServerPort();
   if (shouldWarnAboutPartialTlsConfig(tlsPaths)) {
@@ -60,6 +65,10 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(
     `Signer service running on ${tlsOptions ? 'HTTPS' : 'HTTP'} port ${port}`,
+  );
+  logger.log(`Swagger UI available at /${SWAGGER_PATH}`);
+  logger.log(
+    `OpenAPI JSON available at /${SWAGGER_PATH}-json`,
   );
 }
 bootstrap();
