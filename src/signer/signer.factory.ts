@@ -16,10 +16,15 @@ export class SignerFactory {
 
     privateKeys.forEach((privateKey) => {
       if (signers.has(privateKey.walletId)) {
-        throw new Error(`Duplicate wallet id ${privateKey.walletId}`);
+        throw new Error(
+          `Duplicate wallet id ${privateKey.walletId}`,
+        );
       }
 
-      signers.set(privateKey.walletId, this.createLocalSigner(privateKey));
+      signers.set(
+        privateKey.walletId,
+        this.createLocalSigner(privateKey),
+      );
     });
 
     return signers;
@@ -35,7 +40,9 @@ export class SignerFactory {
       config.kvStorePath,
       config.timeoutMs,
     );
-    const address = await signer.getAddress(config.walletId);
+    const address = await signer.getAddress(
+      config.walletId,
+    );
 
     return {
       walletId: config.walletId,
@@ -49,15 +56,12 @@ export class SignerFactory {
   ): Promise<Map<number, ManagedSigner>> {
     const signer = await this.createOpenBaoSigner(config);
 
-    return new Map([
-      [
-        config.walletId,
-        signer,
-      ],
-    ]);
+    return new Map([[config.walletId, signer]]);
   }
 
-  private createLocalSigner(privateKey: SignerKeyConfig): ManagedSigner {
+  private createLocalSigner(
+    privateKey: SignerKeyConfig,
+  ): ManagedSigner {
     const wallet = new ethers.Wallet(privateKey.key);
 
     return {

@@ -37,16 +37,29 @@ import { Public } from '../common/decorators/public.decorator';
 @UseGuards(AuthentikGuard)
 @ApiBearerAuth()
 export class SignerController {
-  constructor(private readonly signerService: SignerService) {}
+  constructor(
+    private readonly signerService: SignerService,
+  ) {}
 
-  private parseOptionalWalletId(walletId?: string | number): number | undefined {
-    if (walletId === undefined || walletId === null || walletId === '') {
+  private parseOptionalWalletId(
+    walletId?: string | number,
+  ): number | undefined {
+    if (
+      walletId === undefined ||
+      walletId === null ||
+      walletId === ''
+    ) {
       return undefined;
     }
 
     const parsedWalletId = Number(walletId);
-    if (!Number.isInteger(parsedWalletId) || parsedWalletId < 1) {
-      throw new BadRequestException('walletId must be a positive integer');
+    if (
+      !Number.isInteger(parsedWalletId) ||
+      parsedWalletId < 1
+    ) {
+      throw new BadRequestException(
+        'walletId must be a positive integer',
+      );
     }
 
     return parsedWalletId;
@@ -56,7 +69,8 @@ export class SignerController {
     ...walletIds: Array<string | number | undefined>
   ): number | undefined {
     for (const walletId of walletIds) {
-      const parsedWalletId = this.parseOptionalWalletId(walletId);
+      const parsedWalletId =
+        this.parseOptionalWalletId(walletId);
       if (parsedWalletId !== undefined) {
         return parsedWalletId;
       }
@@ -85,7 +99,9 @@ export class SignerController {
   async getAddress(
     @Query('walletId') walletId?: string,
   ): Promise<AddressResponse> {
-    return this.signerService.getAddress(this.resolveWalletId(walletId));
+    return this.signerService.getAddress(
+      this.resolveWalletId(walletId),
+    );
   }
 
   @Post('sign-message')
@@ -94,8 +110,12 @@ export class SignerController {
   async signMessage(
     @Body() dto: SignMessageDto,
   ): Promise<SignMessageResponse> {
-    const resolvedWalletId = this.resolveWalletId(dto.walletId);
-    const signer = await this.signerService.getAddress(resolvedWalletId);
+    const resolvedWalletId = this.resolveWalletId(
+      dto.walletId,
+    );
+    const signer = await this.signerService.getAddress(
+      resolvedWalletId,
+    );
     const signature = await this.signerService.signMessage(
       dto.message,
       resolvedWalletId,
@@ -125,13 +145,19 @@ export class SignerController {
     @Param('hash') hash: string,
     @Query('chainId', ParseIntPipe) chainId: number,
   ): Promise<TransactionResponse> {
-    const tx = await this.signerService.getTransaction(chainId, hash);
-    if (!tx) throw new NotFoundException('Transaction not found');
+    const tx = await this.signerService.getTransaction(
+      chainId,
+      hash,
+    );
+    if (!tx)
+      throw new NotFoundException('Transaction not found');
     return tx;
   }
 
   @Get('nonce')
-  @ApiOperation({ summary: 'Get current nonce of the signer wallet' })
+  @ApiOperation({
+    summary: 'Get current nonce of the signer wallet',
+  })
   async getNonce(
     @Query('chainId', ParseIntPipe) chainId: number,
     @Query('walletId') walletId?: string,

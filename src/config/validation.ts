@@ -64,13 +64,22 @@ class EnvironmentVariables {
 }
 
 export function validate(config: Record<string, unknown>) {
-  if (config.SIGNER_MODE !== 'local' && config.SIGNER_MODE !== 'vault') {
-    throw new Error('SIGNER_MODE must be either local or vault');
+  if (
+    config.SIGNER_MODE !== 'local' &&
+    config.SIGNER_MODE !== 'vault'
+  ) {
+    throw new Error(
+      'SIGNER_MODE must be either local or vault',
+    );
   }
 
-  const validatedConfig = plainToClass(EnvironmentVariables, config, {
-    enableImplicitConversion: true,
-  });
+  const validatedConfig = plainToClass(
+    EnvironmentVariables,
+    config,
+    {
+      enableImplicitConversion: true,
+    },
+  );
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: false,
   });
@@ -79,15 +88,23 @@ export function validate(config: Record<string, unknown>) {
   }
 
   const signerMode = validatedConfig.SIGNER_MODE;
-  if (signerMode === 'local' && !validatedConfig.PRIVATE_KEYS) {
-    throw new Error('PRIVATE_KEYS is required when SIGNER_MODE=local');
+  if (
+    signerMode === 'local' &&
+    !validatedConfig.PRIVATE_KEYS
+  ) {
+    throw new Error(
+      'PRIVATE_KEYS is required when SIGNER_MODE=local',
+    );
   }
 
   if (signerMode === 'vault') {
     const missingVaultVars = [
       'VAULT_URL',
       'VAULT_TOKEN',
-    ].filter((key) => !validatedConfig[key as keyof EnvironmentVariables]);
+    ].filter(
+      (key) =>
+        !validatedConfig[key as keyof EnvironmentVariables],
+    );
 
     if (missingVaultVars.length) {
       throw new Error(

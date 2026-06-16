@@ -19,10 +19,14 @@ const mockSendTransaction = jest.fn().mockResolvedValue({
 const mockWallets = new Map<string, any>();
 
 function mockCreateWallet(privateKey: string) {
-  const signerNumber = privateKey.endsWith('2'.repeat(64)) ? '2' : '1';
+  const signerNumber = privateKey.endsWith('2'.repeat(64))
+    ? '2'
+    : '1';
   const wallet = {
     address: `0xMockAddress${signerNumber}`,
-    signMessage: jest.fn().mockResolvedValue(`0xsigned${signerNumber}`),
+    signMessage: jest
+      .fn()
+      .mockResolvedValue(`0xsigned${signerNumber}`),
     sendTransaction: mockSendTransaction,
     connect: jest.fn(),
   };
@@ -42,7 +46,9 @@ jest.mock('ethers', () => ({
       constructor(public provider?: unknown) {}
     },
     JsonRpcProvider: jest.fn(() => mockProvider),
-    Wallet: jest.fn((privateKey: string) => mockCreateWallet(privateKey)),
+    Wallet: jest.fn((privateKey: string) =>
+      mockCreateWallet(privateKey),
+    ),
   },
 }));
 
@@ -55,47 +61,49 @@ describe('SignerService', () => {
     jest.clearAllMocks();
     mockWallets.clear();
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SignerService,
-        SignerFactory,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string) => {
-              switch (key) {
-                case 'signer.mode':
-                  return 'local';
+    const module: TestingModule =
+      await Test.createTestingModule({
+        providers: [
+          SignerService,
+          SignerFactory,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                switch (key) {
+                  case 'signer.mode':
+                    return 'local';
 
-                case 'signer.privateKeys':
-                  return [
-                    {
-                      walletId: 10,
-                      key: `0x${'1'.repeat(64)}`,
-                    },
-                    {
-                      walletId: 20,
-                      key: `0x${'2'.repeat(64)}`,
-                    },
-                  ];
+                  case 'signer.privateKeys':
+                    return [
+                      {
+                        walletId: 10,
+                        key: `0x${'1'.repeat(64)}`,
+                      },
+                      {
+                        walletId: 20,
+                        key: `0x${'2'.repeat(64)}`,
+                      },
+                    ];
 
-                case 'signer.nodeUriMap':
-                  return {
-                    '11155111': 'https://test.rpc',
-                    '11155420': 'https://test.optimism.rpc',
-                  };
+                  case 'signer.nodeUriMap':
+                    return {
+                      '11155111': 'https://test.rpc',
+                      '11155420':
+                        'https://test.optimism.rpc',
+                    };
 
-                case 'signer.openBao':
-                  return {};
+                  case 'signer.openBao':
+                    return {};
 
-                default:
-                  return undefined;
-              }
-            }),
+                  default:
+                    return undefined;
+                }
+              }),
+            },
           },
-        },
-      ],
-    }).compile();
+        ],
+      }).compile();
 
     service = module.get<SignerService>(SignerService);
 
@@ -130,7 +138,10 @@ describe('SignerService', () => {
   });
 
   it('should sign a message with selected wallet', async () => {
-    const signature = await service.signMessage('hello', 20);
+    const signature = await service.signMessage(
+      'hello',
+      20,
+    );
 
     expect(signature).toBe('0xsigned2');
     expect(
@@ -155,9 +166,9 @@ describe('SignerService', () => {
       gasUsed: '21000',
       status: 1,
     });
-    expect(mockWallets.get(`0x${'1'.repeat(64)}`).connect).toHaveBeenCalledWith(
-      mockProvider,
-    );
+    expect(
+      mockWallets.get(`0x${'1'.repeat(64)}`).connect,
+    ).toHaveBeenCalledWith(mockProvider);
     expect(mockSendTransaction).toHaveBeenCalledWith({
       to: '0xto',
       value: 100n,
@@ -166,11 +177,17 @@ describe('SignerService', () => {
   });
 
   it('should send transaction with selected wallet', async () => {
-    await service.sendTransaction(11155111, '0xto', '100', '0xdata', 20);
-
-    expect(mockWallets.get(`0x${'2'.repeat(64)}`).connect).toHaveBeenCalledWith(
-      mockProvider,
+    await service.sendTransaction(
+      11155111,
+      '0xto',
+      '100',
+      '0xdata',
+      20,
     );
+
+    expect(
+      mockWallets.get(`0x${'2'.repeat(64)}`).connect,
+    ).toHaveBeenCalledWith(mockProvider);
   });
 
   it('should get transaction', async () => {
@@ -186,7 +203,10 @@ describe('SignerService', () => {
       chainId: 11155111n,
     });
 
-    const tx = await service.getTransaction(11155111, '0xhash');
+    const tx = await service.getTransaction(
+      11155111,
+      '0xhash',
+    );
 
     expect(tx).toEqual({
       hash: '0xhash',
@@ -200,13 +220,18 @@ describe('SignerService', () => {
       chainId: '11155111',
     });
 
-    expect(mockProvider.getTransaction).toHaveBeenCalledWith('0xhash');
+    expect(
+      mockProvider.getTransaction,
+    ).toHaveBeenCalledWith('0xhash');
   });
 
   it('should return null when transaction is not found', async () => {
     mockProvider.getTransaction.mockResolvedValue(null);
 
-    const tx = await service.getTransaction(11155111, '0xhash');
+    const tx = await service.getTransaction(
+      11155111,
+      '0xhash',
+    );
 
     expect(tx).toBeNull();
   });
@@ -218,9 +243,9 @@ describe('SignerService', () => {
 
     expect(nonce).toBe(42);
 
-    expect(mockProvider.getTransactionCount).toHaveBeenCalledWith(
-      '0xMockAddress1',
-    );
+    expect(
+      mockProvider.getTransactionCount,
+    ).toHaveBeenCalledWith('0xMockAddress1');
   });
 
   it('should get nonce for selected wallet', async () => {
@@ -230,9 +255,9 @@ describe('SignerService', () => {
 
     expect(nonce).toBe(24);
 
-    expect(mockProvider.getTransactionCount).toHaveBeenCalledWith(
-      '0xMockAddress2',
-    );
+    expect(
+      mockProvider.getTransactionCount,
+    ).toHaveBeenCalledWith('0xMockAddress2');
   });
 
   it('should throw when chain ID has no configured node URI', async () => {
@@ -248,47 +273,51 @@ describe('SignerService', () => {
   });
 
   it('should throw a suggestive error for unsupported signer mode', async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SignerService,
-        {
-          provide: SignerFactory,
-          useValue: {
-            createLocalSigners: jest.fn(),
-            createOpenBaoSigners: jest.fn(),
+    const module: TestingModule =
+      await Test.createTestingModule({
+        providers: [
+          SignerService,
+          {
+            provide: SignerFactory,
+            useValue: {
+              createLocalSigners: jest.fn(),
+              createOpenBaoSigners: jest.fn(),
+            },
           },
-        },
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string) => {
-              switch (key) {
-                case 'signer.mode':
-                  return 'remote';
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                switch (key) {
+                  case 'signer.mode':
+                    return 'remote';
 
-                case 'signer.nodeUriMap':
-                  return {
-                    '11155111': 'https://test.rpc',
-                  };
+                  case 'signer.nodeUriMap':
+                    return {
+                      '11155111': 'https://test.rpc',
+                    };
 
-                case 'signer.privateKeys':
-                  return [];
+                  case 'signer.privateKeys':
+                    return [];
 
-                case 'signer.openBao':
-                  return {};
+                  case 'signer.openBao':
+                    return {};
 
-                default:
-                  return undefined;
-              }
-            }),
+                  default:
+                    return undefined;
+                }
+              }),
+            },
           },
-        },
-      ],
-    }).compile();
+        ],
+      }).compile();
 
-    const invalidModeService = module.get<SignerService>(SignerService);
+    const invalidModeService =
+      module.get<SignerService>(SignerService);
 
-    await expect(invalidModeService.onModuleInit()).rejects.toThrow(
+    await expect(
+      invalidModeService.onModuleInit(),
+    ).rejects.toThrow(
       `Unknown mode "remote". Please proceed with supported modes: 'local' or 'vault'`,
     );
   });
@@ -306,74 +335,82 @@ describe('SignerService', () => {
     };
     const createOpenBaoSigner = jest
       .fn()
-      .mockImplementation((config: { walletId?: number }) => {
-        if (config.walletId === 30) {
+      .mockImplementation(
+        (config: { walletId?: number }) => {
+          if (config.walletId === 30) {
+            return Promise.resolve({
+              walletId: 30,
+              address: '0xVaultAddress',
+              signer: openBaoSigner,
+            });
+          }
+
           return Promise.resolve({
-            walletId: 30,
-            address: '0xVaultAddress',
-            signer: openBaoSigner,
+            address: '0xDefaultVaultAddress',
+            signer: defaultOpenBaoSigner,
           });
-        }
-
-        return Promise.resolve({
-          address: '0xDefaultVaultAddress',
-          signer: defaultOpenBaoSigner,
-        });
-      });
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SignerService,
-        {
-          provide: SignerFactory,
-          useValue: {
-            createLocalSigners: jest.fn(),
-            createOpenBaoSigner,
-          },
         },
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string) => {
-              switch (key) {
-                case 'signer.mode':
-                  return 'vault';
+      );
 
-                case 'signer.nodeUriMap':
-                  return {
-                    '11155111': 'https://test.rpc',
-                  };
-
-                case 'signer.privateKeys':
-                  return [];
-
-                case 'signer.openBao':
-                  return {
-                    url: 'http://vault.test',
-                    token: 'vault-token',
-                    ethereumMount: 'ethereum',
-                    kvStorePath: 'secret',
-                    timeoutMs: 5000,
-                  };
-
-                default:
-                  return undefined;
-              }
-            }),
+    const module: TestingModule =
+      await Test.createTestingModule({
+        providers: [
+          SignerService,
+          {
+            provide: SignerFactory,
+            useValue: {
+              createLocalSigners: jest.fn(),
+              createOpenBaoSigner,
+            },
           },
-        },
-      ],
-    }).compile();
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                switch (key) {
+                  case 'signer.mode':
+                    return 'vault';
 
-    const vaultService = module.get<SignerService>(SignerService);
+                  case 'signer.nodeUriMap':
+                    return {
+                      '11155111': 'https://test.rpc',
+                    };
+
+                  case 'signer.privateKeys':
+                    return [];
+
+                  case 'signer.openBao':
+                    return {
+                      url: 'http://vault.test',
+                      token: 'vault-token',
+                      ethereumMount: 'ethereum',
+                      kvStorePath: 'secret',
+                      timeoutMs: 5000,
+                    };
+
+                  default:
+                    return undefined;
+                }
+              }),
+            },
+          },
+        ],
+      }).compile();
+
+    const vaultService =
+      module.get<SignerService>(SignerService);
 
     await vaultService.onModuleInit();
 
-    await expect(vaultService.getAddress()).resolves.toEqual({
+    await expect(
+      vaultService.getAddress(),
+    ).resolves.toEqual({
       walletId: undefined,
       address: '0xDefaultVaultAddress',
     });
-    await expect(vaultService.getAddress(30)).resolves.toEqual({
+    await expect(
+      vaultService.getAddress(30),
+    ).resolves.toEqual({
       walletId: 30,
       address: '0xVaultAddress',
     });

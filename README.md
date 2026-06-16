@@ -1,101 +1,444 @@
-# Signer Service (NestJS)
+# Signer Service
 
-Remote signing service for Ocean Enterprise with Authentik JWT authentication.
+Remote signing service built with NestJS for Ocean Enterprise. The service provides authenticated blockchain signing operations using Authentik JWT authentication and supports multiple chains through configurable RPC endpoints.
+
+---
 
 ## Features
 
-- Transaction signing and sending across configured networks
-- Multiple local signer private keys selectable by wallet id
-- Authentik OIDC JWT authentication (Bearer token)
-- Swagger documentation at `/api`
-- Docker & docker-compose ready
-- Unit and e2e tests
+- Authentik JWT authentication
+- Remote message signing
+- Remote transaction signing and broadcasting
+- Multi-chain support
+- Swagger API documentation
+- Docker support
+- Unit tests
+- End-to-end tests
+- ESLint + Prettier
+- TypeScript strict mode
+- GitHub Actions CI/CD
+- CodeQL security scanning
 
-## Setup
+---
 
-1. Copy `.env.example` to `.env` and fill values
-2. Install dependencies: `npm install`
-3. Run dev: `npm run start:dev`
-4. Build: `npm run build`
-5. Run production: `npm run start:prod`
+# Architecture
 
-## Environment
+```text
+src/
+├── auth/
+│   ├── strategies/
+│   └── auth.module.ts
+│
+├── common/
+│   ├── decorators/
+│   ├── filters/
+│   ├── guards/
+│   └── interceptors/
+│
+├── config/
+│   ├── configuration.ts
+│   └── validation.ts
+│
+├── signer/
+│   ├── dto/
+│   ├── interfaces/
+│   ├── signer.controller.ts
+│   ├── signer.service.ts
+│   └── signer.module.ts
+│
+├── app.module.ts
+└── main.ts
 
-Set the signer mode with `SIGNER_MODE`. Local signers are configured with `PRIVATE_KEYS` as a JSON array:
-
-```env
-SIGNER_MODE=local
-PRIVATE_KEYS=[{"walletId":10,"key":"0x..."}]
-NODE_URI_MAP={"11155111":"https://<your-rpc-provider-url-and-key>"}
+test/
+└── e2e/
 ```
 
-Each local signer must have a unique numeric `walletId` and a 32-byte hex private key. Endpoints that use the signer accept an optional `walletId`; when omitted, the first wallet from `PRIVATE_KEYS` is used.
+---
 
-Vault signer mode uses a Vault-compatible API and does not load private keys into this service:
+# Authentication
+
+All API endpoints are protected by Authentik JWT authentication through a global guard.
+
+The guard validates:
+
+- JWT signature
+- JWKS endpoint
+- Issuer
+- Audience
+
+Public routes can be marked with the `@Public()` decorator.
+
+---
+
+# Environment Variables
+
+Create a `.env` file:
 
 ```env
-SIGNER_MODE=vault
-VAULT_URL=http://localhost:8200
-VAULT_TOKEN=<vault-token>
-VAULT_ETHEREUM_MOUNT=ethereum
-VAULT_KV_STORE_PATH=secret
-VAULT_TIMEOUT_MS=10000
-NODE_URI_MAP={"11155111":"https://<your-rpc-provider-url-and-key>"}
+PRIVATE_KEYS=[{"id":1,"key":"0x..."}]
+
+NODE_URI_MAP={
+  "11155111":"https://ethereum-sepolia.publicnode.com"
+}
+
+AUTHENTIK_JWKS_URI=https://example.com/jwks/
+AUTHENTIK_ISSUER=https://example.com/
+AUTHENTIK_AUDIENCE=client-id
+
+PORT=3001
+NODE_ENV=development
 ```
 
-In Vault mode, the wallet id is read from the request JWT `orgWalletId` unless an endpoint explicitly passes `walletId`. The service resolves the public wallet address with `GET /v1/{VAULT_KV_STORE_PATH}/data/wallets/by-id/{walletId}`, then signs with `POST /v1/{VAULT_ETHEREUM_MOUNT}/accounts/{walletAddress}/signRaw` for messages and `POST /v1/{VAULT_ETHEREUM_MOUNT}/accounts/{walletAddress}/sign` for transactions.
+---
 
-## HTTPS
+# Installation
 
-Direct HTTPS is optional. Reverse proxy TLS offload remains supported without these variables. To run the signer service with HTTPS directly, configure both certificate paths:
+Install dependencies:
 
-```env
-HTTP_CERT_PATH=/etc/ssl/certs/cert.pem
-HTTP_KEY_PATH=/etc/ssl/certs/key.pem
-```
-
-If only one path is configured, or if the files cannot be loaded, the service logs a warning and starts with HTTP.
-
-## Endpoints (all protected by JWT)
-
-- `GET /address?walletId=10`
-- `POST /sign-message`
-- `POST /send-transaction`
-- `GET /transaction/:hash`
-- `GET /nonce?chainId=11155111&walletId=10`
-
-## Testing
-
-- Unit: `npm test`
-- E2E: `npm run test:e2e`
-
-# Install dependencies
-
+```bash
 npm install
+```
 
-# Copy environment variables
+---
 
-cp .env.example .env
+# Development
 
-# Edit .env with your actual values (private key, node URI map, Authentik URIs)
+Run in watch mode:
 
-# Run in development
-
+```bash
 npm run start:dev
+```
 
-# Run unit tests
+Application:
 
+```text
+http://localhost:3001
+```
+
+Swagger:
+
+```text
+http://localhost:3001/api
+```
+
+---
+
+# Code Quality
+
+Lint project:
+
+```bash
+npm run lint
+```
+
+Auto-fix lint issues:
+
+```bash
+npm run lint:fix
+```
+
+Format code:
+
+```bash
+npm run format
+```
+
+Type checking:
+
+```bash
+npm run typecheck
+```
+
+---
+
+# Testing
+
+## Unit Tests
+
+Run:
+
+```bash
 npm test
+```
 
-# Run e2e tests (requires a valid JWT from Authentik, or modify guard to allow test mode)
+Watch mode:
 
+```bash
+npm run test:watch
+```
+
+---
+
+## End-to-End Tests
+
+Run:
+
+```bash
 npm run test:e2e
+```
 
-# Build and run production
+Current e2e suite validates:
 
+- JWT protection
+- Unauthorized access rejection
+- Public endpoints
+- Controller integration
+
+---
+
+## Coverage
+
+Generate coverage report:
+
+```bash
+npm run test:cov
+```
+
+Coverage output:
+
+```text
+coverage/
+```
+
+Current CI requires:
+
+```text
+Statements: 70%
+Branches: 70%
+Functions: 70%
+Lines: 70%
+```
+
+Configured in:
+
+```json
+coverageThreshold
+```
+
+inside `package.json`.
+
+---
+
+# Build
+
+Before building, the project automatically performs:
+
+1. ESLint validation
+2. TypeScript type checking
+
+Build command:
+
+```bash
 npm run build
+```
+
+Equivalent flow:
+
+```bash
+npm run lint
+npm run typecheck
+nest build
+```
+
+Compiled output:
+
+```text
+dist/
+```
+
+Run production build:
+
+```bash
 npm run start:prod
+```
+
+---
 
 # Docker
 
-docker-compose up --build
+Build image:
+
+```bash
+docker build -t signer-service .
+```
+
+Run container:
+
+```bash
+docker run \
+  --env-file .env \
+  -p 3001:3001 \
+  signer-service
+```
+
+---
+
+# Docker Compose
+
+Start service:
+
+```bash
+docker compose up --build
+```
+
+Stop service:
+
+```bash
+docker compose down
+```
+
+View logs:
+
+```bash
+docker compose logs -f
+```
+
+---
+
+# API Endpoints
+
+Protected routes require:
+
+```http
+Authorization: Bearer <jwt>
+```
+
+Endpoints:
+
+```http
+GET    /address
+GET    /nonce
+GET    /transaction/:hash
+
+POST   /sign-message
+POST   /send-transaction
+```
+
+Swagger documentation:
+
+```text
+/api
+```
+
+---
+
+# Adding New Modules
+
+Generate a module:
+
+```bash
+nest g module organization
+```
+
+Generate a controller:
+
+```bash
+nest g controller organization
+```
+
+Generate a service:
+
+```bash
+nest g service organization
+```
+
+Example future modules:
+
+```text
+src/
+├── organization/
+├── wallet/
+├── vault/
+├── policies/
+├── audit/
+└── signer/
+```
+
+Each module should contain:
+
+```text
+module
+controller
+service
+dto
+interfaces
+tests
+```
+
+---
+
+# CI/CD
+
+GitHub Actions automatically run on:
+
+- Pull Requests to main
+- Pushes to main
+- Pushes to develop
+- Pushes to feat/\*\* branches
+
+Pipeline stages:
+
+```text
+Install
+ ↓
+Lint
+ ↓
+Type Check
+ ↓
+Build
+ ↓
+Unit Tests
+ ↓
+E2E Tests
+ ↓
+Coverage
+```
+
+Workflow:
+
+```text
+.github/workflows/ci.yml
+```
+
+---
+
+# Security Scanning
+
+CodeQL runs:
+
+- On push to main
+- On push to develop
+- On pull requests
+- Weekly schedule
+
+Workflow:
+
+```text
+.github/workflows/codeql.yml
+```
+
+CodeQL performs:
+
+- Security analysis
+- Vulnerability detection
+- TypeScript code scanning
+
+---
+
+# Local Verification Checklist
+
+Before opening a Pull Request:
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run test:e2e
+npm run test:cov
+npm run build
+docker compose up --build
+```
+
+Everything should pass before merging.
+
+---

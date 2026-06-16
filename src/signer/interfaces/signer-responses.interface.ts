@@ -1,5 +1,8 @@
 // src/signer/interfaces/signer-responses.interface.ts
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 
 export class AddressResponse {
   @ApiPropertyOptional()

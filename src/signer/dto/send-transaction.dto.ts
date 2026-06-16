@@ -10,7 +10,8 @@ import {
 
 export class SendTransactionDto {
   @ApiProperty({
-    description: 'Wallet id to use. Defaults to the first configured wallet.',
+    description:
+      'Wallet id to use. Defaults to the first configured wallet.',
     required: false,
   })
   @Type(() => Number)
@@ -32,7 +33,11 @@ export class SendTransactionDto {
   @IsEthereumAddress()
   to: string;
 
-  @ApiProperty({ description: 'Value in wei', required: false, default: '0' })
+  @ApiProperty({
+    description: 'Value in wei',
+    required: false,
+    default: '0',
+  })
   @IsString()
   @IsOptional()
   value?: string = '0';

@@ -62,7 +62,9 @@ describe('configuration', () => {
   it('uses the default Vault timeout', () => {
     process.env.SIGNER_MODE = 'vault';
 
-    expect(configuration().signer.openBao.timeoutMs).toBe(10000);
+    expect(configuration().signer.openBao.timeoutMs).toBe(
+      10000,
+    );
   });
 
   it('rejects missing signer mode', () => {

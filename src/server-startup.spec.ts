@@ -12,7 +12,9 @@ describe('server startup', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'signer-server-test-'));
+    tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'signer-server-test-'),
+    );
   });
 
   afterEach(() => {
@@ -49,7 +51,9 @@ describe('server startup', () => {
   });
 
   it('falls back when TLS files cannot be loaded', () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation();
 
     expect(
       getTlsOptions({
@@ -58,14 +62,18 @@ describe('server startup', () => {
       }),
     ).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Unable to load HTTPS certificate files:'),
+      expect.stringContaining(
+        'Unable to load HTTPS certificate files:',
+      ),
     );
   });
 
   it('detects partial TLS configuration', () => {
-    expect(shouldWarnAboutPartialTlsConfig({ certPath: '/cert.pem' })).toBe(
-      true,
-    );
+    expect(
+      shouldWarnAboutPartialTlsConfig({
+        certPath: '/cert.pem',
+      }),
+    ).toBe(true);
     expect(
       shouldWarnAboutPartialTlsConfig({
         certPath: '/cert.pem',

@@ -4,7 +4,10 @@ function parseNodeUriMap(): Record<string, string> {
     return {};
   }
 
-  const parsed = JSON.parse(value) as Record<string, unknown>;
+  const parsed = JSON.parse(value) as Record<
+    string,
+    unknown
+  >;
   return Object.fromEntries(
     Object.entries(parsed).map(([chainId, nodeUri]) => [
       chainId,
@@ -21,13 +24,18 @@ type PrivateKeyConfig = {
 function parseSignerMode(): 'local' | 'vault' {
   const value = process.env.SIGNER_MODE;
   if (value !== 'local' && value !== 'vault') {
-    throw new Error('SIGNER_MODE must be either local or vault');
+    throw new Error(
+      'SIGNER_MODE must be either local or vault',
+    );
   }
 
   return value;
 }
 
-function parseVaultMount(value: string | undefined, fallback: string): string {
+function parseVaultMount(
+  value: string | undefined,
+  fallback: string,
+): string {
   const mount = value?.trim() || fallback;
   return mount.replace(/^\/+|\/+$/g, '');
 }
@@ -40,7 +48,9 @@ function parseVaultTimeoutMs(): number {
 
   const timeoutMs = Number(value);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1) {
-    throw new Error('VAULT_TIMEOUT_MS must be a positive integer');
+    throw new Error(
+      'VAULT_TIMEOUT_MS must be a positive integer',
+    );
   }
 
   return timeoutMs;
@@ -60,11 +70,19 @@ function parsePrivateKeys(): PrivateKeyConfig[] {
   const seenWalletIds = new Set<number>();
   return parsed.map((entry, index) => {
     if (!entry || typeof entry !== 'object') {
-      throw new Error(`PRIVATE_KEYS[${index}] must be an object`);
+      throw new Error(
+        `PRIVATE_KEYS[${index}] must be an object`,
+      );
     }
 
-    const { walletId, key } = entry as Record<string, unknown>;
-    if (!Number.isInteger(walletId) || Number(walletId) < 1) {
+    const { walletId, key } = entry as Record<
+      string,
+      unknown
+    >;
+    if (
+      !Number.isInteger(walletId) ||
+      Number(walletId) < 1
+    ) {
       throw new Error(
         `PRIVATE_KEYS[${index}].walletId must be a positive integer`,
       );
@@ -78,7 +96,9 @@ function parsePrivateKeys(): PrivateKeyConfig[] {
     seenWalletIds.add(Number(walletId));
 
     if (typeof key !== 'string' || !key.trim()) {
-      throw new Error(`PRIVATE_KEYS[${index}].key must be a non-empty string`);
+      throw new Error(
+        `PRIVATE_KEYS[${index}].key must be a non-empty string`,
+      );
     }
 
     const normalizedKey = key.trim();
@@ -101,7 +121,8 @@ export default () => {
   return {
     signer: {
       mode: signerMode,
-      privateKeys: signerMode === 'local' ? parsePrivateKeys() : [],
+      privateKeys:
+        signerMode === 'local' ? parsePrivateKeys() : [],
       nodeUriMap: parseNodeUriMap(),
       openBao: {
         url: process.env.VAULT_URL,

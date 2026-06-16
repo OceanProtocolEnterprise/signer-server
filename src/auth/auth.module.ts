@@ -6,12 +6,7 @@ import { AuthentikGuard } from '../common/guards/authentik.guard';
 
 @Module({
   imports: [PassportModule],
-  providers: [
-    JwtStrategy,
-    AuthentikGuard,
-  ],
-  exports: [
-    AuthentikGuard,
-  ],
+  providers: [JwtStrategy, AuthentikGuard],
+  exports: [AuthentikGuard],
 })
 export class AuthModule {}

@@ -28,7 +28,9 @@ type VaultSignTransactionResponse = {
 
 const DEFAULT_VAULT_TIMEOUT_MS = 10000;
 
-export class OpenBaoVaultSigner extends ethers.AbstractSigner {
+export class OpenBaoVaultSigner
+  extends ethers.AbstractSigner
+{
   private readonly vaultUrl: string;
   private cachedAddresses = new Map<number, string>();
   private cachedDefaultAddress?: string;
@@ -43,8 +45,14 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
   ) {
     super(provider);
     this.vaultUrl = vaultUrl.replace(/\/+$/, '');
-    this.ethereumMount = ethereumMount.replace(/^\/+|\/+$/g, '');
-    this.kvStorePath = kvStorePath.replace(/^\/+|\/+$/g, '');
+    this.ethereumMount = ethereumMount.replace(
+      /^\/+|\/+$/g,
+      '',
+    );
+    this.kvStorePath = kvStorePath.replace(
+      /^\/+|\/+$/g,
+      '',
+    );
   }
 
   private async request<T>(
@@ -53,7 +61,10 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
     body?: unknown,
   ): Promise<T> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      this.timeoutMs,
+    );
 
     try {
       const response = await fetch(
@@ -77,8 +88,13 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
 
       return (await response.json()) as T;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Vault request timed out after ${this.timeoutMs}ms`);
+      if (
+        error instanceof Error &&
+        error.name === 'AbortError'
+      ) {
+        throw new Error(
+          `Vault request timed out after ${this.timeoutMs}ms`,
+        );
       }
       throw error;
     } finally {
@@ -92,20 +108,25 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
         return this.cachedDefaultAddress;
       }
 
-      const result = await this.request<VaultAccountsResponse>(
-        'LIST',
-        `${this.ethereumMount}/accounts`,
-      );
+      const result =
+        await this.request<VaultAccountsResponse>(
+          'LIST',
+          `${this.ethereumMount}/accounts`,
+        );
       const [firstAccount] = result.data.keys;
       if (!firstAccount) {
         throw new Error('No Vault Ethereum accounts found');
       }
 
-      this.cachedDefaultAddress = firstAccount.replace(/\/+$/, '');
+      this.cachedDefaultAddress = firstAccount.replace(
+        /\/+$/,
+        '',
+      );
       return this.cachedDefaultAddress;
     }
 
-    const cachedAddress = this.cachedAddresses.get(walletId);
+    const cachedAddress =
+      this.cachedAddresses.get(walletId);
     if (cachedAddress) {
       return cachedAddress;
     }
@@ -119,7 +140,9 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
     return address;
   }
 
-  async signMessage(message: string | Uint8Array): Promise<string> {
+  async signMessage(
+    message: string | Uint8Array,
+  ): Promise<string> {
     const address = await this.getAddress();
     const digest = ethers.hashMessage(message);
     const result = await this.request<VaultSignRawResponse>(
@@ -140,30 +163,46 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
         v += 27;
       }
 
-      const signature = ethers.Signature.from({ r, s, v }).serialized;
+      const signature = ethers.Signature.from({
+        r,
+        s,
+        v,
+      }).serialized;
       if (
-        ethers.verifyMessage(message, signature).toLowerCase() ===
-        address.toLowerCase()
+        ethers
+          .verifyMessage(message, signature)
+          .toLowerCase() === address.toLowerCase()
       ) {
         return signature;
       }
     }
 
     for (const v of [27, 28]) {
-      const signature = ethers.Signature.from({ r, s, v }).serialized;
+      const signature = ethers.Signature.from({
+        r,
+        s,
+        v,
+      }).serialized;
       if (
-        ethers.verifyMessage(message, signature).toLowerCase() ===
-        address.toLowerCase()
+        ethers
+          .verifyMessage(message, signature)
+          .toLowerCase() === address.toLowerCase()
       ) {
         return signature;
       }
     }
 
-    throw new Error('Could not determine recovery id for Vault signature');
+    throw new Error(
+      'Could not determine recovery id for Vault signature',
+    );
   }
 
-  async signTransaction(_tx: ethers.TransactionRequest): Promise<string> {
-    throw new Error('Use sendTransaction for Vault transaction signing');
+  async signTransaction(
+    _tx: ethers.TransactionRequest,
+  ): Promise<string> {
+    throw new Error(
+      'Use sendTransaction for Vault transaction signing',
+    );
   }
 
   async sendTransaction(
@@ -177,10 +216,16 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
 
     const from = await this.getAddress();
     const resolved = await ethers.resolveProperties(tx);
-    const nonce = await this.provider.getTransactionCount(from, 'pending');
+    const nonce = await this.provider.getTransactionCount(
+      from,
+      'pending',
+    );
     const network = await this.provider.getNetwork();
-    const value = resolved.value ? BigInt(resolved.value.toString()) : 0n;
-    const data = (resolved.data as string | undefined) ?? '0x';
+    const value = resolved.value
+      ? BigInt(resolved.value.toString())
+      : 0n;
+    const data =
+      (resolved.data as string | undefined) ?? '0x';
     const feeData = await this.provider.getFeeData();
     const gasPrice = feeData.gasPrice ?? 0n;
     const gasEstimate = await this.provider.estimateGas({
@@ -190,25 +235,30 @@ export class OpenBaoVaultSigner extends ethers.AbstractSigner {
       data,
     });
 
-    const result = await this.request<VaultSignTransactionResponse>(
-      'POST',
-      `${this.ethereumMount}/accounts/${from}/sign`,
-      {
-        to: resolved.to,
-        value: ethers.toBeHex(value),
-        data,
-        nonce: ethers.toBeHex(nonce),
-        gas: Number(gasEstimate),
-        gasPrice: ethers.toBeHex(gasPrice),
-        chainId: Number(network.chainId),
-      },
-    );
+    const result =
+      await this.request<VaultSignTransactionResponse>(
+        'POST',
+        `${this.ethereumMount}/accounts/${from}/sign`,
+        {
+          to: resolved.to,
+          value: ethers.toBeHex(value),
+          data,
+          nonce: ethers.toBeHex(nonce),
+          gas: Number(gasEstimate),
+          gasPrice: ethers.toBeHex(gasPrice),
+          chainId: Number(network.chainId),
+        },
+      );
 
-    return this.provider.broadcastTransaction(result.data.signed_transaction);
+    return this.provider.broadcastTransaction(
+      result.data.signed_transaction,
+    );
   }
 
   async signTypedData(): Promise<string> {
-    throw new Error('Vault typed data signing is not supported');
+    throw new Error(
+      'Vault typed data signing is not supported',
+    );
   }
 
   connect(provider: ethers.Provider): OpenBaoVaultSigner {

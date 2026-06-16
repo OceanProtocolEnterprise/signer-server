@@ -12,7 +12,8 @@ describe('config validation', () => {
   };
 
   it('rejects missing signer mode', () => {
-    const { SIGNER_MODE: _signerMode, ...config } = validBaseConfig;
+    const { SIGNER_MODE: _signerMode, ...config } =
+      validBaseConfig;
 
     expect(() => validate(config)).toThrow(
       'SIGNER_MODE must be either local or vault',
@@ -20,14 +21,17 @@ describe('config validation', () => {
   });
 
   it('rejects empty signer mode', () => {
-    expect(() => validate({ ...validBaseConfig, SIGNER_MODE: '' })).toThrow(
-      'SIGNER_MODE must be either local or vault',
-    );
+    expect(() =>
+      validate({ ...validBaseConfig, SIGNER_MODE: '' }),
+    ).toThrow('SIGNER_MODE must be either local or vault');
   });
 
   it('rejects invalid signer mode', () => {
-    expect(() => validate({ ...validBaseConfig, SIGNER_MODE: 'remote' })).toThrow(
-      'SIGNER_MODE must be either local or vault',
-    );
+    expect(() =>
+      validate({
+        ...validBaseConfig,
+        SIGNER_MODE: 'remote',
+      }),
+    ).toThrow('SIGNER_MODE must be either local or vault');
   });
 });

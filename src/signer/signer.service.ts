@@ -1,5 +1,9 @@
 // src/signer/signer.service.ts
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { SignerFactory } from './signer.factory';
@@ -18,12 +22,18 @@ import {
 export class SignerService implements OnModuleInit {
   private readonly logger = new Logger(SignerService.name);
   private nodeUriMap: Record<string, string>;
-  private providers = new Map<number, ethers.JsonRpcProvider>();
+  private providers = new Map<
+    number,
+    ethers.JsonRpcProvider
+  >();
   private signers = new Map<number, ManagedSigner>();
   private defaultWalletId: number;
   private defaultVaultSigner?: ManagedSigner;
   private signerMode: SignerMode;
-  private openBaoConfig?: Omit<OpenBaoSignerConfig, 'walletId'>;
+  private openBaoConfig?: Omit<
+    OpenBaoSignerConfig,
+    'walletId'
+  >;
 
   constructor(
     private configService: ConfigService,
@@ -32,29 +42,42 @@ export class SignerService implements OnModuleInit {
 
   async onModuleInit() {
     const nodeUriMap =
-      this.configService.get<Record<string, string>>('signer.nodeUriMap') ?? {};
-    const signerMode = this.configService.get<string>('signer.mode');
+      this.configService.get<Record<string, string>>(
+        'signer.nodeUriMap',
+      ) ?? {};
+    const signerMode =
+      this.configService.get<string>('signer.mode');
     const privateKeys =
-      this.configService.get<SignerKeyConfig[]>('signer.privateKeys') ?? [];
+      this.configService.get<SignerKeyConfig[]>(
+        'signer.privateKeys',
+      ) ?? [];
     const openBaoConfig =
-      this.configService.get<Partial<OpenBaoSignerConfig>>('signer.openBao') ??
-      {};
+      this.configService.get<Partial<OpenBaoSignerConfig>>(
+        'signer.openBao',
+      ) ?? {};
 
     if (!signerMode) {
-      throw new Error('SIGNER_MODE must be either local or vault');
+      throw new Error(
+        'SIGNER_MODE must be either local or vault',
+      );
     }
 
     if (!Object.keys(nodeUriMap).length) {
-      throw new Error('Missing signer configuration (NODE_URI_MAP)');
+      throw new Error(
+        'Missing signer configuration (NODE_URI_MAP)',
+      );
     }
 
     if (signerMode === 'local') {
       this.signerMode = signerMode;
       if (!privateKeys.length) {
-        throw new Error('Missing signer configuration (PRIVATE_KEYS)');
+        throw new Error(
+          'Missing signer configuration (PRIVATE_KEYS)',
+        );
       }
 
-      this.signers = this.signerFactory.createLocalSigners(privateKeys);
+      this.signers =
+        this.signerFactory.createLocalSigners(privateKeys);
       this.defaultWalletId = privateKeys[0].walletId;
     } else if (signerMode === 'vault') {
       this.signerMode = signerMode;
@@ -93,7 +116,9 @@ export class SignerService implements OnModuleInit {
     });
   }
 
-  private getProvider(chainId: number): ethers.JsonRpcProvider {
+  private getProvider(
+    chainId: number,
+  ): ethers.JsonRpcProvider {
     const cachedProvider = this.providers.get(chainId);
     if (cachedProvider) {
       return cachedProvider;
@@ -101,7 +126,9 @@ export class SignerService implements OnModuleInit {
 
     const nodeUri = this.nodeUriMap[String(chainId)];
     if (!nodeUri) {
-      throw new Error(`No node URI configured for chain ID ${chainId}`);
+      throw new Error(
+        `No node URI configured for chain ID ${chainId}`,
+      );
     }
 
     const provider = new ethers.JsonRpcProvider(nodeUri, {
@@ -112,16 +139,23 @@ export class SignerService implements OnModuleInit {
     return provider;
   }
 
-  private async getSigner(walletId?: number): Promise<ManagedSigner> {
-    const resolvedWalletId = walletId ?? this.defaultWalletId;
+  private async getSigner(
+    walletId?: number,
+  ): Promise<ManagedSigner> {
+    const resolvedWalletId =
+      walletId ?? this.defaultWalletId;
     const signer = this.signers.get(resolvedWalletId);
     if (!signer) {
       if (this.signerMode !== 'vault') {
-        throw new Error(`No wallet configured for id ${resolvedWalletId}`);
+        throw new Error(
+          `No wallet configured for id ${resolvedWalletId}`,
+        );
       }
 
       if (!this.openBaoConfig) {
-        throw new Error('Vault signer configuration is not initialized');
+        throw new Error(
+          'Vault signer configuration is not initialized',
+        );
       }
 
       if (walletId === undefined) {
@@ -138,10 +172,11 @@ export class SignerService implements OnModuleInit {
         return this.defaultVaultSigner;
       }
 
-      const openBaoSigner = await this.signerFactory.createOpenBaoSigner({
-        walletId,
-        ...this.openBaoConfig,
-      });
+      const openBaoSigner =
+        await this.signerFactory.createOpenBaoSigner({
+          walletId,
+          ...this.openBaoConfig,
+        });
       this.signers.set(walletId, openBaoSigner);
       this.logger.log(
         `Vault wallet ${walletId} resolved with address: ${openBaoSigner.address}`,
@@ -162,8 +197,13 @@ export class SignerService implements OnModuleInit {
     };
   }
 
-  async signMessage(message: string, walletId?: number): Promise<string> {
-    return (await this.getSigner(walletId)).signer.signMessage(message);
+  async signMessage(
+    message: string,
+    walletId?: number,
+  ): Promise<string> {
+    return (
+      await this.getSigner(walletId)
+    ).signer.signMessage(message);
   }
 
   async sendTransaction(
@@ -182,7 +222,8 @@ export class SignerService implements OnModuleInit {
         data,
       });
     const receipt = await tx.wait();
-    if (!receipt) throw new Error('Transaction receipt not available');
+    if (!receipt)
+      throw new Error('Transaction receipt not available');
     return {
       hash: tx.hash,
       from: tx.from,
@@ -198,7 +239,8 @@ export class SignerService implements OnModuleInit {
     chainId: number,
     hash: string,
   ): Promise<TransactionResponse | null> {
-    const tx = await this.getProvider(chainId).getTransaction(hash);
+    const tx =
+      await this.getProvider(chainId).getTransaction(hash);
     if (!tx) return null;
     return {
       hash: tx.hash,
@@ -213,7 +255,10 @@ export class SignerService implements OnModuleInit {
     };
   }
 
-  async getNonce(chainId: number, walletId?: number): Promise<number> {
+  async getNonce(
+    chainId: number,
+    walletId?: number,
+  ): Promise<number> {
     const signer = await this.getSigner(walletId);
     return this.getProvider(chainId).getTransactionCount(
       signer.address,

@@ -41,7 +41,8 @@ describe('OpenBaoVaultSigner', () => {
       json: jest.fn().mockResolvedValue({
         data: {
           data: {
-            address: '0xcf3185a502be4b5eb2c4eb81646ecf7dd0ac2f22',
+            address:
+              '0xcf3185a502be4b5eb2c4eb81646ecf7dd0ac2f22',
           },
         },
       }),
@@ -73,7 +74,9 @@ describe('OpenBaoVaultSigner', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         data: {
-          keys: ['0xcf3185a502be4b5eb2c4eb81646ecf7dd0ac2f22'],
+          keys: [
+            '0xcf3185a502be4b5eb2c4eb81646ecf7dd0ac2f22',
+          ],
         },
       }),
     } as unknown as Response);
