@@ -108,20 +108,25 @@ export class OpenBaoVaultSigner
         return this.cachedDefaultAddress;
       }
 
-      const result = await this.request<VaultAccountsResponse>(
-        'LIST',
-        `${this.ethereumMount}/accounts`,
-      );
+      const result =
+        await this.request<VaultAccountsResponse>(
+          'LIST',
+          `${this.ethereumMount}/accounts`,
+        );
       const [firstAccount] = result.data.keys;
       if (!firstAccount) {
         throw new Error('No Vault Ethereum accounts found');
       }
 
-      this.cachedDefaultAddress = firstAccount.replace(/\/+$/, '');
+      this.cachedDefaultAddress = firstAccount.replace(
+        /\/+$/,
+        '',
+      );
       return this.cachedDefaultAddress;
     }
 
-    const cachedAddress = this.cachedAddresses.get(walletId);
+    const cachedAddress =
+      this.cachedAddresses.get(walletId);
     if (cachedAddress) {
       return cachedAddress;
     }

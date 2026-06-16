@@ -40,7 +40,9 @@ export class SignerFactory {
       config.kvStorePath,
       config.timeoutMs,
     );
-    const address = await signer.getAddress(config.walletId);
+    const address = await signer.getAddress(
+      config.walletId,
+    );
 
     return {
       walletId: config.walletId,
@@ -54,12 +56,7 @@ export class SignerFactory {
   ): Promise<Map<number, ManagedSigner>> {
     const signer = await this.createOpenBaoSigner(config);
 
-    return new Map([
-      [
-        config.walletId,
-        signer,
-      ],
-    ]);
+    return new Map([[config.walletId, signer]]);
   }
 
   private createLocalSigner(

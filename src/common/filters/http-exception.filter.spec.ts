@@ -15,14 +15,18 @@ describe('HttpExceptionFilter', () => {
     json = jest.fn();
     host = {
       switchToHttp: jest.fn().mockReturnValue({
-        getResponse: jest.fn().mockReturnValue({ status, json }),
+        getResponse: jest
+          .fn()
+          .mockReturnValue({ status, json }),
         getRequest: jest.fn().mockReturnValue({
           method: 'POST',
           url: '/sign-message?walletId=1',
         }),
       }),
     } as unknown as ArgumentsHost;
-    jest.spyOn(filter['logger'], 'error').mockImplementation();
+    jest
+      .spyOn(filter['logger'], 'error')
+      .mockImplementation();
   });
 
   afterEach(() => {
@@ -33,7 +37,10 @@ describe('HttpExceptionFilter', () => {
   it('returns the message for unexpected errors outside production', () => {
     process.env.NODE_ENV = 'test';
 
-    filter.catch(new Error('Could not determine recovery id'), host);
+    filter.catch(
+      new Error('Could not determine recovery id'),
+      host,
+    );
 
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith(
@@ -49,7 +56,9 @@ describe('HttpExceptionFilter', () => {
     process.env.NODE_ENV = 'production';
 
     filter.catch(
-      new Error('Vault request failed (500): upstream secret detail'),
+      new Error(
+        'Vault request failed (500): upstream secret detail',
+      ),
       host,
     );
 
@@ -67,7 +76,9 @@ describe('HttpExceptionFilter', () => {
     process.env.NODE_ENV = 'production';
 
     filter.catch(
-      new BadRequestException('walletId must be a positive integer'),
+      new BadRequestException(
+        'walletId must be a positive integer',
+      ),
       host,
     );
 
