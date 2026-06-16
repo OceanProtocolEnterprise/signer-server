@@ -43,7 +43,9 @@ type AuthenticatedRequest = Request & {
 @UseGuards(AuthentikGuard)
 @ApiBearerAuth()
 export class SignerController {
-  private readonly logger = new Logger(SignerController.name);
+  private readonly logger = new Logger(
+    SignerController.name,
+  );
 
   constructor(
     private readonly signerService: SignerService,
@@ -137,9 +139,7 @@ export class SignerController {
       dto.message,
       resolvedWalletId,
     );
-    this.logger.log(
-      `SIGN MESSAGE signature: ${signature}`,
-    );
+    this.logger.log(`SIGN MESSAGE signature: ${signature}`);
     return { signature, ...signer };
   }
 

@@ -35,7 +35,9 @@ export class OpenBaoVaultSigner
   private readonly vaultUrl: string;
   private cachedAddresses = new Map<number, string>();
   private cachedDefaultAddress?: string;
-  private readonly logger = new Logger(OpenBaoVaultSigner.name);
+  private readonly logger = new Logger(
+    OpenBaoVaultSigner.name,
+  );
 
   constructor(
     vaultUrl: string,
