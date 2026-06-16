@@ -11,6 +11,7 @@ import {
   NotFoundException,
   ParseIntPipe,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import { SignerService } from './signer.service';
@@ -42,6 +43,8 @@ type AuthenticatedRequest = Request & {
 @UseGuards(AuthentikGuard)
 @ApiBearerAuth()
 export class SignerController {
+  private readonly logger = new Logger(SignerController.name);
+
   constructor(
     private readonly signerService: SignerService,
   ) {}
@@ -115,15 +118,27 @@ export class SignerController {
   async signMessage(
     @Body() dto: SignMessageDto,
   ): Promise<SignMessageResponse> {
+    this.logger.log(
+      `SIGN MESSAGE dto: ${JSON.stringify(dto)}`,
+    );
     const resolvedWalletId = this.resolveWalletId(
       dto.walletId,
+    );
+    this.logger.log(
+      `SIGN MESSAGE resolvedWalletId: ${resolvedWalletId}`,
     );
     const signer = await this.signerService.getAddress(
       resolvedWalletId,
     );
+    this.logger.log(
+      `SIGN MESSAGE signer: ${JSON.stringify(signer)}`,
+    );
     const signature = await this.signerService.signMessage(
       dto.message,
       resolvedWalletId,
+    );
+    this.logger.log(
+      `SIGN MESSAGE signature: ${signature}`,
     );
     return { signature, ...signer };
   }
