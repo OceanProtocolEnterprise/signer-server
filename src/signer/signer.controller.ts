@@ -10,7 +10,7 @@ import {
   HttpStatus,
   NotFoundException,
   ParseIntPipe,
-  BadRequestException
+  BadRequestException,
 } from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import { SignerService } from './signer.service';
