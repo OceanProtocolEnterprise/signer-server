@@ -27,6 +27,7 @@ import { Request } from 'express';
 import {
   AddressResponse,
   SignMessageResponse,
+  SendTransactionResult,
   SendTransactionResponse,
   TransactionResponse,
   NonceResponse,
@@ -112,6 +113,7 @@ export class SignerController {
   @Post('sign-message')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign a message' })
+  @ApiResponse({ status: 200, type: SignMessageResponse })
   async signMessage(
     @Body() dto: SignMessageDto,
   ): Promise<SignMessageResponse> {
@@ -130,6 +132,10 @@ export class SignerController {
 
   @Post('send-transaction')
   @ApiOperation({ summary: 'Send a transaction' })
+  @ApiResponse({
+    status: 201,
+    type: SendTransactionResult,
+  })
   async sendTransaction(
     @Body() dto: SendTransactionDto,
   ): Promise<SendTransactionResponse> {
@@ -146,6 +152,11 @@ export class SignerController {
 
   @Get('transaction/:hash')
   @ApiOperation({ summary: 'Get transaction details' })
+  @ApiResponse({ status: 200, type: TransactionResponse })
+  @ApiResponse({
+    status: 404,
+    description: 'Transaction not found',
+  })
   async getTransaction(
     @Param('hash') hash: string,
     @Query('chainId', ParseIntPipe) chainId: number,
@@ -163,6 +174,7 @@ export class SignerController {
   @ApiOperation({
     summary: 'Get current nonce of the signer wallet',
   })
+  @ApiResponse({ status: 200, type: NonceResponse })
   async getNonce(
     @Query('chainId', ParseIntPipe) chainId: number,
     @Query('walletId') walletId?: string,
