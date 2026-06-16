@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
 
 type VaultAccountResponse = {
@@ -35,9 +34,6 @@ export class OpenBaoVaultSigner
   private readonly vaultUrl: string;
   private cachedAddresses = new Map<number, string>();
   private cachedDefaultAddress?: string;
-  private readonly logger = new Logger(
-    OpenBaoVaultSigner.name,
-  );
 
   constructor(
     vaultUrl: string,
@@ -147,14 +143,8 @@ export class OpenBaoVaultSigner
   async signMessage(
     message: string | Uint8Array,
   ): Promise<string> {
-    this.logger.log(
-      `SIGN MESSAGE openbao message: ${message}`,
-    );
     const address = await this.getAddress();
     const digest = ethers.hashMessage(message);
-    this.logger.log(
-      `SIGN MESSAGE openbao digest: ${digest}`,
-    );
     const result = await this.request<VaultSignRawResponse>(
       'POST',
       `${this.ethereumMount}/accounts/${address}/signRaw`,
