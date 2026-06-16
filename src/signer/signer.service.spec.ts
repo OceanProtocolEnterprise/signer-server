@@ -272,25 +272,84 @@ describe('SignerService', () => {
     );
   });
 
+  it('should throw a suggestive error for unsupported signer mode', async () => {
+    const module: TestingModule =
+      await Test.createTestingModule({
+        providers: [
+          SignerService,
+          {
+            provide: SignerFactory,
+            useValue: {
+              createLocalSigners: jest.fn(),
+              createOpenBaoSigners: jest.fn(),
+            },
+          },
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                switch (key) {
+                  case 'signer.mode':
+                    return 'remote';
+
+                  case 'signer.nodeUriMap':
+                    return {
+                      '11155111': 'https://test.rpc',
+                    };
+
+                  case 'signer.privateKeys':
+                    return [];
+
+                  case 'signer.openBao':
+                    return {};
+
+                  default:
+                    return undefined;
+                }
+              }),
+            },
+          },
+        ],
+      }).compile();
+
+    const invalidModeService =
+      module.get<SignerService>(SignerService);
+
+    await expect(
+      invalidModeService.onModuleInit(),
+    ).rejects.toThrow(
+      `Unknown mode "remote". Please proceed with supported modes: 'local' or 'vault'`,
+    );
+  });
+
   it('should initialize Vault signer mode', async () => {
     const openBaoSigner = {
       address: '0xVaultAddress',
       signMessage: jest.fn(),
       connect: jest.fn(),
     };
-    const createOpenBaoSigners = jest
+    const defaultOpenBaoSigner = {
+      address: '0xDefaultVaultAddress',
+      signMessage: jest.fn(),
+      connect: jest.fn(),
+    };
+    const createOpenBaoSigner = jest
       .fn()
-      .mockResolvedValue(
-        new Map([
-          [
-            30,
-            {
+      .mockImplementation(
+        (config: { walletId?: number }) => {
+          if (config.walletId === 30) {
+            return Promise.resolve({
               walletId: 30,
               address: '0xVaultAddress',
               signer: openBaoSigner,
-            },
-          ],
-        ]),
+            });
+          }
+
+          return Promise.resolve({
+            address: '0xDefaultVaultAddress',
+            signer: defaultOpenBaoSigner,
+          });
+        },
       );
 
     const module: TestingModule =
@@ -301,7 +360,7 @@ describe('SignerService', () => {
             provide: SignerFactory,
             useValue: {
               createLocalSigners: jest.fn(),
-              createOpenBaoSigners,
+              createOpenBaoSigner,
             },
           },
           {
@@ -343,16 +402,26 @@ describe('SignerService', () => {
 
     await vaultService.onModuleInit();
 
-    await expect(vaultService.getAddress()).rejects.toThrow(
-      'walletId is required when SIGNER_MODE=vault',
-    );
+    await expect(
+      vaultService.getAddress(),
+    ).resolves.toEqual({
+      walletId: undefined,
+      address: '0xDefaultVaultAddress',
+    });
     await expect(
       vaultService.getAddress(30),
     ).resolves.toEqual({
       walletId: 30,
       address: '0xVaultAddress',
     });
-    expect(createOpenBaoSigners).toHaveBeenCalledWith({
+    expect(createOpenBaoSigner).toHaveBeenCalledWith({
+      url: 'http://vault.test',
+      token: 'vault-token',
+      ethereumMount: 'ethereum',
+      kvStorePath: 'secret',
+      timeoutMs: 5000,
+    });
+    expect(createOpenBaoSigner).toHaveBeenCalledWith({
       walletId: 30,
       url: 'http://vault.test',
       token: 'vault-token',

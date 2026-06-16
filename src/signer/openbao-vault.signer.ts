@@ -8,6 +8,12 @@ type VaultAccountResponse = {
   };
 };
 
+type VaultAccountsResponse = {
+  data: {
+    keys: string[];
+  };
+};
+
 type VaultSignRawResponse = {
   data: {
     signature: string;
@@ -26,14 +32,14 @@ export class OpenBaoVaultSigner
   extends ethers.AbstractSigner
 {
   private readonly vaultUrl: string;
-  private cachedAddress?: string;
+  private cachedAddresses = new Map<number, string>();
+  private cachedDefaultAddress?: string;
 
   constructor(
     vaultUrl: string,
     private readonly vaultToken: string,
     private readonly ethereumMount: string,
     private readonly kvStorePath: string,
-    private readonly walletId: number,
     private readonly timeoutMs = DEFAULT_VAULT_TIMEOUT_MS,
     provider?: ethers.Provider,
   ) {
@@ -96,17 +102,37 @@ export class OpenBaoVaultSigner
     }
   }
 
-  async getAddress(): Promise<string> {
-    if (this.cachedAddress) {
-      return this.cachedAddress;
+  async getAddress(walletId?: number): Promise<string> {
+    if (walletId === undefined) {
+      if (this.cachedDefaultAddress) {
+        return this.cachedDefaultAddress;
+      }
+
+      const result = await this.request<VaultAccountsResponse>(
+        'LIST',
+        `${this.ethereumMount}/accounts`,
+      );
+      const [firstAccount] = result.data.keys;
+      if (!firstAccount) {
+        throw new Error('No Vault Ethereum accounts found');
+      }
+
+      this.cachedDefaultAddress = firstAccount.replace(/\/+$/, '');
+      return this.cachedDefaultAddress;
+    }
+
+    const cachedAddress = this.cachedAddresses.get(walletId);
+    if (cachedAddress) {
+      return cachedAddress;
     }
 
     const result = await this.request<VaultAccountResponse>(
       'GET',
-      `${this.kvStorePath}/data/wallets/by-id/${this.walletId}`,
+      `${this.kvStorePath}/data/wallets/by-id/${walletId}`,
     );
-    this.cachedAddress = result.data.data.address;
-    return this.cachedAddress;
+    const address = result.data.data.address;
+    this.cachedAddresses.set(walletId, address);
+    return address;
   }
 
   async signMessage(
@@ -236,11 +262,11 @@ export class OpenBaoVaultSigner
       this.vaultToken,
       this.ethereumMount,
       this.kvStorePath,
-      this.walletId,
       this.timeoutMs,
       provider,
     );
-    signer.cachedAddress = this.cachedAddress;
+    signer.cachedAddresses = new Map(this.cachedAddresses);
+    signer.cachedDefaultAddress = this.cachedDefaultAddress;
     return signer;
   }
 }

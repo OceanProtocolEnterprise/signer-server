@@ -30,27 +30,34 @@ export class SignerFactory {
     return signers;
   }
 
-  async createOpenBaoSigners(
+  async createOpenBaoSigner(
     config: OpenBaoSignerConfig,
-  ): Promise<Map<number, ManagedSigner>> {
+  ): Promise<ManagedSigner> {
     const signer = new OpenBaoVaultSigner(
       config.url,
       config.token,
       config.ethereumMount,
       config.kvStorePath,
-      config.walletId,
       config.timeoutMs,
     );
-    const address = await signer.getAddress();
+    const address = await signer.getAddress(config.walletId);
+
+    return {
+      walletId: config.walletId,
+      address,
+      signer,
+    };
+  }
+
+  async createOpenBaoSigners(
+    config: OpenBaoSignerConfig & { walletId: number },
+  ): Promise<Map<number, ManagedSigner>> {
+    const signer = await this.createOpenBaoSigner(config);
 
     return new Map([
       [
         config.walletId,
-        {
-          walletId: config.walletId,
-          address,
-          signer,
-        },
+        signer,
       ],
     ]);
   }

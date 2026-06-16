@@ -107,4 +107,37 @@ describe('SignerFactory', () => {
       }),
     );
   });
+
+  it('should create a default Vault signer from the first vault account', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: {
+          keys: ['0xDefaultVaultAddress'],
+        },
+      }),
+    } as unknown as Response);
+
+    const signer = await factory.createOpenBaoSigner({
+      url: 'http://vault.test',
+      token: 'vault-token',
+      ethereumMount: 'ethereum',
+      kvStorePath: 'secret',
+      timeoutMs: 5000,
+    });
+
+    expect(signer).toMatchObject({
+      address: '0xDefaultVaultAddress',
+    });
+    expect(signer.walletId).toBeUndefined();
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://vault.test/v1/ethereum/accounts',
+      expect.objectContaining({
+        method: 'LIST',
+        headers: expect.objectContaining({
+          'X-Vault-Token': 'vault-token',
+        }),
+      }),
+    );
+  });
 });

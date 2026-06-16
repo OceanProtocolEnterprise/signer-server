@@ -8,7 +8,7 @@ export type SignerKeyConfig = {
 };
 
 export type OpenBaoSignerConfig = {
-  walletId: number;
+  walletId?: number;
   url: string;
   token: string;
   ethereumMount: string;
@@ -17,7 +17,7 @@ export type OpenBaoSignerConfig = {
 };
 
 export type ManagedSigner = {
-  walletId: number;
+  walletId?: number;
   address: string;
   signer: ethers.AbstractSigner;
 };
