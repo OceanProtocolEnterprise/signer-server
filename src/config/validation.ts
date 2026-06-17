@@ -47,6 +47,10 @@ class EnvironmentVariables {
   @IsString()
   AUTHENTIK_AUDIENCE: string;
 
+  @IsOptional()
+  @IsString()
+  UPSTREAM_IDP?: string;
+
   @IsNumber()
   PORT: number;
 

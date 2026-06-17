@@ -142,4 +142,13 @@ describe('configuration', () => {
       keyPath: '/etc/ssl/certs/key.pem',
     });
   });
+
+  it('maps upstream IdP config', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.UPSTREAM_IDP = 'participant-idp';
+
+    expect(configuration().authentik.upstreamIdp).toBe(
+      'participant-idp',
+    );
+  });
 });
