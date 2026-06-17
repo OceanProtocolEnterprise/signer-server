@@ -214,13 +214,26 @@ export class SignerService implements OnModuleInit {
     walletId?: number,
   ): Promise<SendTransactionResult> {
     const signer = await this.getSigner(walletId);
+    this.logger.log(
+      `Sending transaction from wallet ${signer.walletId}`,
+    );
+    this.logger.log(
+      `Transaction details: ${JSON.stringify({ to, value, data })}`,
+    );
+    const provider = this.getProvider(chainId);
+    this.logger.log(
+      `Using provider: ${JSON.stringify(provider)}`,
+    );
     const tx = await signer.signer
-      .connect(this.getProvider(chainId))
+      .connect(provider)
       .sendTransaction({
         to,
         value: BigInt(value),
         data,
       });
+    this.logger.log(
+      `Transaction sent: ${JSON.stringify(tx)}`,
+    );
     const receipt = await tx.wait();
     if (!receipt)
       throw new Error('Transaction receipt not available');
