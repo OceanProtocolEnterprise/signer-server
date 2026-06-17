@@ -305,10 +305,6 @@ Protected routes require:
 Authorization: Bearer <jwt>
 ```
 
-The JWT must include a positive integer `walletId` claim.
-Wallet IDs are not accepted in query parameters or request
-bodies.
-
 Endpoints:
 
 ```http
