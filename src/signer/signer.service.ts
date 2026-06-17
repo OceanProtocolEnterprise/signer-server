@@ -119,12 +119,21 @@ export class SignerService implements OnModuleInit {
   private getProvider(
     chainId: number,
   ): ethers.JsonRpcProvider {
+    this.logger.log(
+      `Getting provider for chain ID ${chainId}`,
+    );
     const cachedProvider = this.providers.get(chainId);
+    this.logger.log(
+      `Cached provider for chain ID ${chainId}: ${cachedProvider ? 'found' : 'not found'}`,
+    );
     if (cachedProvider) {
       return cachedProvider;
     }
 
     const nodeUri = this.nodeUriMap[String(chainId)];
+    this.logger.log(
+      `Node URI for chain ID ${chainId}: ${nodeUri ?? 'not found'}`,
+    );
     if (!nodeUri) {
       throw new Error(
         `No node URI configured for chain ID ${chainId}`,
@@ -135,6 +144,9 @@ export class SignerService implements OnModuleInit {
       name: 'network',
       chainId,
     });
+    this.logger.log(
+      `Provider for chain ID ${chainId} created: ${JSON.stringify(provider)}`,
+    );
     this.providers.set(chainId, provider);
     return provider;
   }
@@ -216,6 +228,9 @@ export class SignerService implements OnModuleInit {
     const signer = await this.getSigner(walletId);
     this.logger.log(
       `Sending transaction from wallet ${signer.walletId}`,
+    );
+    this.logger.log(
+      `Using wallet address: ${JSON.stringify(signer.address)}`,
     );
     this.logger.log(
       `Transaction details: ${JSON.stringify({ to, value, data })}`,
