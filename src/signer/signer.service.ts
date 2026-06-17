@@ -1,5 +1,6 @@
 // src/signer/signer.service.ts
 import {
+  BadRequestException,
   Injectable,
   Logger,
   OnModuleInit,
@@ -130,10 +131,10 @@ export class SignerService implements OnModuleInit {
       return cachedProvider;
     }
 
-    const nodeUri = this.nodeUriMap[String(chainId)];
     this.logger.log(
-      `Node URI for chain ID ${chainId}: ${nodeUri ?? 'not found'}`,
+      `Node URI for chain ID ${chainId}: ${this.nodeUriMap[String(chainId)] ? 'configured' : 'not configured'}`,
     );
+    const nodeUri = this.nodeUriMap[String(chainId)];
     if (!nodeUri) {
       throw new Error(
         `No node URI configured for chain ID ${chainId}`,
@@ -142,13 +143,58 @@ export class SignerService implements OnModuleInit {
 
     const provider = new JsonRpcProvider(nodeUri);
     this.logger.log(
-      `Provider: ${JSON.stringify(provider)} with node URI: ${nodeUri}`,
-    );
-    this.logger.log(
-      `Provider for chain ID ${chainId} created: ${JSON.stringify(provider)}`,
+      `Provider for chain ID ${chainId} created`,
     );
     this.providers.set(chainId, provider);
     return provider;
+  }
+
+  private async assertSufficientFunds(
+    provider: ethers.JsonRpcProvider,
+    chainId: number,
+    from: string,
+    to: string,
+    value: bigint,
+    data: string,
+  ) {
+    const [balance, feeData, gasEstimate] =
+      await Promise.all([
+        provider.getBalance(from),
+        provider.getFeeData(),
+        provider.estimateGas({
+          from,
+          to,
+          value,
+          data,
+        }),
+      ]);
+    const gasPrice =
+      feeData.gasPrice ?? feeData.maxFeePerGas;
+
+    this.logger.log(
+      `Fee payer ${from} balance on chain ID ${chainId}: ${balance.toString()} wei`,
+    );
+
+    if (!gasPrice) {
+      this.logger.warn(
+        `Cannot preflight transaction funds for wallet ${from} on chain ID ${chainId}: missing gas price data`,
+      );
+      return;
+    }
+
+    const required = value + gasEstimate * gasPrice;
+    this.logger.log(
+      `Transaction funding preflight for ${from} on chain ID ${chainId}: value=${value.toString()} wei, estimatedGas=${gasEstimate.toString()}, gasPrice=${gasPrice.toString()} wei, required=${required.toString()} wei`,
+    );
+
+    if (balance < required) {
+      this.logger.warn(
+        `Insufficient funds for fee payer ${from} on chain ID ${chainId}: balance=${balance.toString()} wei, required=${required.toString()} wei`,
+      );
+      throw new BadRequestException(
+        `Insufficient funds for transaction: wallet ${from} on chain ID ${chainId} has ${balance.toString()} wei, needs at least ${required.toString()} wei`,
+      );
+    }
   }
 
   private async getSigner(
@@ -230,20 +276,29 @@ export class SignerService implements OnModuleInit {
       `Sending transaction from wallet ${signer.walletId}`,
     );
     this.logger.log(
-      `Using wallet address: ${JSON.stringify(signer.address)}`,
+      `Fee payer wallet address: ${signer.address}`,
     );
     this.logger.log(
       `Transaction details: ${JSON.stringify({ to, value, data })}`,
     );
     const provider = this.getProvider(chainId);
     this.logger.log(
-      `Using provider: ${JSON.stringify(provider)}`,
+      `Using provider for chain ID ${chainId}`,
+    );
+    const txValue = BigInt(value);
+    await this.assertSufficientFunds(
+      provider,
+      chainId,
+      signer.address,
+      to,
+      txValue,
+      data,
     );
     const tx = await signer.signer
       .connect(provider)
       .sendTransaction({
         to,
-        value: BigInt(value),
+        value: txValue,
         data,
       });
     this.logger.log(

@@ -20,6 +20,7 @@ jest.mock('ethers', () => ({
     AbstractSigner: class {
       constructor(public provider?: unknown) {}
     },
+    getAddress: jest.fn((address: string) => address),
     Wallet: jest.fn((privateKey: string) =>
       mockCreateWallet(privateKey),
     ),
