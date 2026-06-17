@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ethers } from 'ethers';
+import { ethers, JsonRpcProvider } from 'ethers';
 import { SignerFactory } from './signer.factory';
 import {
   ManagedSigner,
@@ -140,7 +140,10 @@ export class SignerService implements OnModuleInit {
       );
     }
 
-    const provider = new ethers.JsonRpcProvider(nodeUri);
+    const provider = new JsonRpcProvider(nodeUri);
+    this.logger.log(
+      `Provider: ${JSON.stringify(provider)} with node URI: ${nodeUri}`,
+    );
     this.logger.log(
       `Provider for chain ID ${chainId} created: ${JSON.stringify(provider)}`,
     );

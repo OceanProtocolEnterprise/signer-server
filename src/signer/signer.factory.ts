@@ -46,7 +46,7 @@ export class SignerFactory {
 
     return {
       walletId: config.walletId,
-      address,
+      address: ethers.getAddress(address),
       signer,
     };
   }
