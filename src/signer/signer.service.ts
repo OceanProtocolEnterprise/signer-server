@@ -140,10 +140,7 @@ export class SignerService implements OnModuleInit {
       );
     }
 
-    const provider = new ethers.JsonRpcProvider(nodeUri, {
-      name: 'network',
-      chainId,
-    });
+    const provider = new ethers.JsonRpcProvider(nodeUri);
     this.logger.log(
       `Provider for chain ID ${chainId} created: ${JSON.stringify(provider)}`,
     );
