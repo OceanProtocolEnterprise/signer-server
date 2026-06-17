@@ -286,6 +286,9 @@ export class SignerService implements OnModuleInit {
       `Using provider for chain ID ${chainId}`,
     );
     const txValue = BigInt(value);
+    this.logger.log(
+      `Transaction value: ${txValue.toString()} wei`,
+    );
     await this.assertSufficientFunds(
       provider,
       chainId,
