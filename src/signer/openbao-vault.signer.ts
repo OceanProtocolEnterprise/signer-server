@@ -42,6 +42,7 @@ export class OpenBaoVaultSigner
     private readonly kvStorePath: string,
     private readonly timeoutMs = DEFAULT_VAULT_TIMEOUT_MS,
     provider?: ethers.Provider,
+    private readonly walletId?: number,
   ) {
     super(provider);
     this.vaultUrl = vaultUrl.replace(/\/+$/, '');
@@ -102,7 +103,9 @@ export class OpenBaoVaultSigner
     }
   }
 
-  async getAddress(walletId?: number): Promise<string> {
+  async getAddress(
+    walletId = this.walletId,
+  ): Promise<string> {
     if (walletId === undefined) {
       if (this.cachedDefaultAddress) {
         return this.cachedDefaultAddress;
@@ -269,6 +272,7 @@ export class OpenBaoVaultSigner
       this.kvStorePath,
       this.timeoutMs,
       provider,
+      this.walletId,
     );
     signer.cachedAddresses = new Map(this.cachedAddresses);
     signer.cachedDefaultAddress = this.cachedDefaultAddress;

@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -9,13 +10,30 @@ import { passportJwtSecret } from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 
 type AuthentikJwtPayload = {
+  iss?: string;
   sub?: string;
+  aud?: string;
+  exp?: number;
+  iat?: number;
+  auth_time?: number;
+  acr?: string;
+  amr?: string[];
+  nonce?: string;
+  sid?: string;
+  jti?: string;
   email?: string;
+  email_verified?: boolean;
+  upstream_idp?: string;
+  orgId?: string;
+  name?: string;
+  given_name?: string;
   preferred_username?: string;
   nickname?: string;
-  orgId?: string;
-  orgWalletId?: number;
   groups?: string[];
+  signerService?: string;
+  walletId?: number;
+  azp?: string;
+  uid?: string;
   scope?: string;
 };
 
@@ -25,6 +43,7 @@ export class JwtStrategy extends PassportStrategy(
   'jwt',
 ) {
   private readonly logger = new Logger(JwtStrategy.name);
+  private readonly upstreamIdp?: string;
 
   constructor(configService: ConfigService) {
     const jwksUri = configService.get<string>(
@@ -35,6 +54,9 @@ export class JwtStrategy extends PassportStrategy(
     );
     const audience = configService.get<string>(
       'authentik.audience',
+    );
+    const upstreamIdp = configService.get<string>(
+      'authentik.upstreamIdp',
     );
 
     if (!jwksUri || !issuer || !audience) {
@@ -58,16 +80,31 @@ export class JwtStrategy extends PassportStrategy(
       ignoreExpiration: false,
     });
 
-    this.logger.log(`JWT Strategy initialized`);
-    this.logger.log(`JWKS URI: ${jwksUri}`);
-    this.logger.log(`Issuer: ${issuer}`);
-    this.logger.log(`Audience: ${audience}`);
+    this.upstreamIdp = upstreamIdp?.trim();
   }
 
   async validate(payload: AuthentikJwtPayload) {
     if (!payload.sub) {
       throw new UnauthorizedException(
         'Invalid token payload',
+      );
+    }
+
+    if (!this.upstreamIdp) {
+      throw new ForbiddenException(
+        'UPSTREAM_IDP is not configured',
+      );
+    }
+
+    if (!payload.upstream_idp) {
+      throw new ForbiddenException(
+        'Missing upstream_idp claim',
+      );
+    }
+
+    if (payload.upstream_idp !== this.upstreamIdp) {
+      throw new ForbiddenException(
+        'Invalid upstream_idp claim',
       );
     }
 
@@ -81,7 +118,8 @@ export class JwtStrategy extends PassportStrategy(
       username:
         payload.preferred_username ?? payload.nickname,
       orgId: payload.orgId,
-      orgWalletId: payload.orgWalletId,
+      walletId: payload.walletId,
+      upstreamIdp: payload.upstream_idp,
       groups: payload.groups ?? [],
       scope: payload.scope,
     };

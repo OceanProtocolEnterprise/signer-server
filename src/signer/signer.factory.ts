@@ -39,6 +39,8 @@ export class SignerFactory {
       config.ethereumMount,
       config.kvStorePath,
       config.timeoutMs,
+      undefined,
+      config.walletId,
     );
     const address = await signer.getAddress(
       config.walletId,
@@ -46,7 +48,7 @@ export class SignerFactory {
 
     return {
       walletId: config.walletId,
-      address,
+      address: ethers.getAddress(address),
       signer,
     };
   }

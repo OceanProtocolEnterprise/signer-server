@@ -142,6 +142,7 @@ export default () => {
       jwksUri: process.env.AUTHENTIK_JWKS_URI,
       issuer: process.env.AUTHENTIK_ISSUER,
       audience: process.env.AUTHENTIK_AUDIENCE,
+      upstreamIdp: process.env.UPSTREAM_IDP,
     },
     port: parseInt(process.env.PORT || '3001', 10),
     nodeEnv: process.env.NODE_ENV || 'development',

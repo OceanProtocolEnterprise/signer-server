@@ -10,7 +10,7 @@ import {
   HttpStatus,
   NotFoundException,
   ParseIntPipe,
-  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import { SignerService } from './signer.service';
@@ -35,7 +35,9 @@ import {
 import { Public } from '../common/decorators/public.decorator';
 
 type AuthenticatedRequest = Request & {
-  user?: unknown;
+  user?: {
+    walletId?: unknown;
+  };
 };
 
 @ApiTags('signer')
@@ -47,42 +49,20 @@ export class SignerController {
     private readonly signerService: SignerService,
   ) {}
 
-  private parseOptionalWalletId(
-    walletId?: string | number,
-  ): number | undefined {
-    if (
-      walletId === undefined ||
-      walletId === null ||
-      walletId === ''
-    ) {
-      return undefined;
-    }
-
-    const parsedWalletId = Number(walletId);
+  private getWalletIdFromRequest(
+    req: AuthenticatedRequest,
+  ): number {
+    const parsedWalletId = Number(req.user?.walletId);
     if (
       !Number.isInteger(parsedWalletId) ||
       parsedWalletId < 1
     ) {
-      throw new BadRequestException(
-        'walletId must be a positive integer',
+      throw new ForbiddenException(
+        'JWT walletId claim must be a positive integer',
       );
     }
 
     return parsedWalletId;
-  }
-
-  private resolveWalletId(
-    ...walletIds: Array<string | number | undefined>
-  ): number | undefined {
-    for (const walletId of walletIds) {
-      const parsedWalletId =
-        this.parseOptionalWalletId(walletId);
-      if (parsedWalletId !== undefined) {
-        return parsedWalletId;
-      }
-    }
-
-    return undefined;
   }
 
   @Get('health')
@@ -103,10 +83,10 @@ export class SignerController {
   @ApiOperation({ summary: 'Get signer wallet address' })
   @ApiResponse({ status: 200, type: AddressResponse })
   async getAddress(
-    @Query('walletId') walletId?: string,
+    @Req() req: AuthenticatedRequest,
   ): Promise<AddressResponse> {
     return this.signerService.getAddress(
-      this.resolveWalletId(walletId),
+      this.getWalletIdFromRequest(req),
     );
   }
 
@@ -116,10 +96,10 @@ export class SignerController {
   @ApiResponse({ status: 200, type: SignMessageResponse })
   async signMessage(
     @Body() dto: SignMessageDto,
+    @Req() req: AuthenticatedRequest,
   ): Promise<SignMessageResponse> {
-    const resolvedWalletId = this.resolveWalletId(
-      dto.walletId,
-    );
+    const resolvedWalletId =
+      this.getWalletIdFromRequest(req);
     const signer = await this.signerService.getAddress(
       resolvedWalletId,
     );
@@ -138,8 +118,9 @@ export class SignerController {
   })
   async sendTransaction(
     @Body() dto: SendTransactionDto,
+    @Req() req: AuthenticatedRequest,
   ): Promise<SendTransactionResponse> {
-    const walletId = this.resolveWalletId(dto.walletId);
+    const walletId = this.getWalletIdFromRequest(req);
     const result = await this.signerService.sendTransaction(
       dto.chainId,
       dto.to,
@@ -177,11 +158,11 @@ export class SignerController {
   @ApiResponse({ status: 200, type: NonceResponse })
   async getNonce(
     @Query('chainId', ParseIntPipe) chainId: number,
-    @Query('walletId') walletId?: string,
+    @Req() req: AuthenticatedRequest,
   ): Promise<NonceResponse> {
     const nonce = await this.signerService.getNonce(
       chainId,
-      this.resolveWalletId(walletId),
+      this.getWalletIdFromRequest(req),
     );
     return { nonce };
   }

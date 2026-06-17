@@ -1,11 +1,11 @@
 // src/signer/signer.service.ts
 import {
+  BadRequestException,
   Injectable,
-  Logger,
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ethers } from 'ethers';
+import { ethers, JsonRpcProvider } from 'ethers';
 import { SignerFactory } from './signer.factory';
 import {
   ManagedSigner,
@@ -20,7 +20,6 @@ import {
 
 @Injectable()
 export class SignerService implements OnModuleInit {
-  private readonly logger = new Logger(SignerService.name);
   private nodeUriMap: Record<string, string>;
   private providers = new Map<
     number,
@@ -100,7 +99,6 @@ export class SignerService implements OnModuleInit {
         kvStorePath: openBaoConfig.kvStorePath,
         timeoutMs: openBaoConfig.timeoutMs,
       };
-      this.logger.log('Vault signer mode initialized');
     } else {
       throw new Error(
         `Unknown mode "${signerMode}". Please proceed with supported modes: 'local' or 'vault'`,
@@ -108,12 +106,6 @@ export class SignerService implements OnModuleInit {
     }
 
     this.nodeUriMap = nodeUriMap;
-
-    this.signers.forEach(({ walletId, address }) => {
-      this.logger.log(
-        `Wallet ${walletId} initialized with address: ${address}`,
-      );
-    });
   }
 
   private getProvider(
@@ -131,12 +123,44 @@ export class SignerService implements OnModuleInit {
       );
     }
 
-    const provider = new ethers.JsonRpcProvider(nodeUri, {
-      name: 'network',
-      chainId,
-    });
+    const provider = new JsonRpcProvider(nodeUri);
     this.providers.set(chainId, provider);
     return provider;
+  }
+
+  private async assertSufficientFunds(
+    provider: ethers.JsonRpcProvider,
+    chainId: number,
+    from: string,
+    to: string,
+    value: bigint,
+    data: string,
+  ) {
+    const [balance, feeData, gasEstimate] =
+      await Promise.all([
+        provider.getBalance(from),
+        provider.getFeeData(),
+        provider.estimateGas({
+          from,
+          to,
+          value,
+          data,
+        }),
+      ]);
+    const gasPrice =
+      feeData.gasPrice ?? feeData.maxFeePerGas;
+
+    if (!gasPrice) {
+      return;
+    }
+
+    const required = value + gasEstimate * gasPrice;
+
+    if (balance < required) {
+      throw new BadRequestException(
+        `Insufficient funds for transaction: wallet ${from} on chain ID ${chainId} has ${balance.toString()} wei, needs at least ${required.toString()} wei`,
+      );
+    }
   }
 
   private async getSigner(
@@ -164,9 +188,6 @@ export class SignerService implements OnModuleInit {
             await this.signerFactory.createOpenBaoSigner({
               ...this.openBaoConfig,
             });
-          this.logger.log(
-            `Default Vault wallet resolved with address: ${this.defaultVaultSigner.address}`,
-          );
         }
 
         return this.defaultVaultSigner;
@@ -178,9 +199,6 @@ export class SignerService implements OnModuleInit {
           ...this.openBaoConfig,
         });
       this.signers.set(walletId, openBaoSigner);
-      this.logger.log(
-        `Vault wallet ${walletId} resolved with address: ${openBaoSigner.address}`,
-      );
       return openBaoSigner;
     }
     return signer;
@@ -214,11 +232,21 @@ export class SignerService implements OnModuleInit {
     walletId?: number,
   ): Promise<SendTransactionResult> {
     const signer = await this.getSigner(walletId);
+    const provider = this.getProvider(chainId);
+    const txValue = BigInt(value);
+    await this.assertSufficientFunds(
+      provider,
+      chainId,
+      signer.address,
+      to,
+      txValue,
+      data,
+    );
     const tx = await signer.signer
-      .connect(this.getProvider(chainId))
+      .connect(provider)
       .sendTransaction({
         to,
-        value: BigInt(value),
+        value: txValue,
         data,
       });
     const receipt = await tx.wait();

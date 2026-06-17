@@ -43,11 +43,15 @@ function mockCreateWallet(privateKey: string) {
 }
 
 const mockProvider = {
+  estimateGas: jest.fn(),
+  getBalance: jest.fn(),
+  getFeeData: jest.fn(),
   getTransaction: jest.fn(),
   getTransactionCount: jest.fn(),
 };
 
 jest.mock('ethers', () => ({
+  JsonRpcProvider: jest.fn(() => mockProvider),
   ethers: {
     AbstractSigner: class {
       constructor(public provider?: unknown) {}
@@ -67,6 +71,13 @@ describe('SignerService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockWallets.clear();
+    mockProvider.estimateGas.mockResolvedValue(21000n);
+    mockProvider.getBalance.mockResolvedValue(
+      1_000_000_000_000_000_000n,
+    );
+    mockProvider.getFeeData.mockResolvedValue({
+      gasPrice: 1n,
+    });
 
     const module: TestingModule =
       await Test.createTestingModule({
@@ -181,6 +192,33 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
     });
+    expect(mockProvider.getBalance).toHaveBeenCalledWith(
+      '0xMockAddress1',
+    );
+    expect(mockProvider.estimateGas).toHaveBeenCalledWith({
+      from: '0xMockAddress1',
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
+    });
+  });
+
+  it('rejects transaction when wallet cannot cover value and gas', async () => {
+    mockProvider.getBalance.mockResolvedValue(1n);
+    mockProvider.estimateGas.mockResolvedValue(21000n);
+    mockProvider.getFeeData.mockResolvedValue({
+      gasPrice: 2n,
+    });
+
+    await expect(
+      service.sendTransaction(
+        11155111,
+        '0xto',
+        '100',
+        '0xdata',
+      ),
+    ).rejects.toThrow('Insufficient funds for transaction');
+    expect(mockSendTransaction).not.toHaveBeenCalled();
   });
 
   it('should send transaction with selected wallet', async () => {

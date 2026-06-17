@@ -65,6 +65,7 @@ The guard validates:
 - JWKS endpoint
 - Issuer
 - Audience
+- `upstream_idp` claim matches `UPSTREAM_IDP`
 
 Public routes can be marked with the `@Public()` decorator.
 
@@ -84,6 +85,7 @@ NODE_URI_MAP={
 AUTHENTIK_JWKS_URI=https://example.com/jwks/
 AUTHENTIK_ISSUER=https://example.com/
 AUTHENTIK_AUDIENCE=client-id
+UPSTREAM_IDP=participant-idp
 
 PORT=3001
 NODE_ENV=development

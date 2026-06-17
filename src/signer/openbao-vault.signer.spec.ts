@@ -146,6 +146,75 @@ describe('OpenBaoVaultSigner', () => {
     );
   });
 
+  it('uses the selected wallet id as the default address when configured', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: {
+          data: {
+            address: '0xSelectedVaultAddress',
+          },
+        },
+      }),
+    } as unknown as Response);
+
+    const signer = new OpenBaoVaultSigner(
+      'http://vault.test/',
+      'vault-token',
+      '/ethereum/',
+      '/secret/',
+      undefined,
+      undefined,
+      10,
+    );
+
+    await expect(signer.getAddress()).resolves.toBe(
+      '0xSelectedVaultAddress',
+    );
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://vault.test/v1/secret/data/wallets/by-id/10',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    );
+  });
+
+  it('preserves the selected wallet id when connecting a provider', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: {
+          data: {
+            address: '0xSelectedVaultAddress',
+          },
+        },
+      }),
+    } as unknown as Response);
+
+    const signer = new OpenBaoVaultSigner(
+      'http://vault.test/',
+      'vault-token',
+      '/ethereum/',
+      '/secret/',
+      undefined,
+      undefined,
+      10,
+    );
+    const connectedSigner = signer.connect(
+      {} as Parameters<OpenBaoVaultSigner['connect']>[0],
+    );
+
+    await expect(
+      connectedSigner.getAddress(),
+    ).resolves.toBe('0xSelectedVaultAddress');
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://vault.test/v1/secret/data/wallets/by-id/10',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    );
+  });
+
   it('throws when Vault has no Ethereum accounts', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: true,
