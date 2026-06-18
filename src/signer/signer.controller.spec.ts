@@ -10,6 +10,7 @@ describe('SignerController', () => {
       getAddress: jest.fn(),
       signMessage: jest.fn(),
       sendTransaction: jest.fn(),
+      getAvailableNetworks: jest.fn(),
       getNonce: jest.fn(),
     } as unknown as jest.Mocked<SignerService>;
     controller = new SignerController(signerService);
@@ -35,6 +36,20 @@ describe('SignerController', () => {
     expect(signerService.getAddress).toHaveBeenCalledWith(
       7,
     );
+  });
+
+  it('returns configured available networks', () => {
+    signerService.getAvailableNetworks.mockReturnValue([
+      { chainId: 11155111, name: 'sepolia' },
+      { chainId: 999 },
+    ]);
+
+    expect(controller.getAvailableNetworks()).toEqual({
+      networks: [
+        { chainId: 11155111, name: 'sepolia' },
+        { chainId: 999 },
+      ],
+    });
   });
 
   it('uses JWT wallet id when signing a message', async () => {

@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ethers, JsonRpcProvider } from 'ethers';
+import { ethers, JsonRpcProvider, Network } from 'ethers';
 import { SignerFactory } from './signer.factory';
 import {
   ManagedSigner,
@@ -14,6 +14,7 @@ import {
   SignerMode,
 } from './interfaces/signer-config.interface';
 import {
+  AvailableNetworkResponse,
   TransactionResponse,
   SendTransactionResult,
 } from './interfaces/signer-responses.interface';
@@ -213,6 +214,22 @@ export class SignerService implements OnModuleInit {
       walletId: signer.walletId,
       address: signer.address,
     };
+  }
+
+  getAvailableNetworks(): AvailableNetworkResponse[] {
+    return Object.keys(this.nodeUriMap)
+      .map((chainId) => Number(chainId))
+      .filter((chainId) => Number.isInteger(chainId))
+      .sort((left, right) => left - right)
+      .map((chainId) => {
+        const networkName = Network.from(chainId).name;
+        return {
+          chainId,
+          ...(networkName !== 'unknown'
+            ? { name: networkName }
+            : {}),
+        };
+      });
   }
 
   async signMessage(

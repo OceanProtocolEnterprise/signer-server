@@ -52,6 +52,17 @@ const mockProvider = {
 
 jest.mock('ethers', () => ({
   JsonRpcProvider: jest.fn(() => mockProvider),
+  Network: {
+    from: jest.fn((chainId: number) => ({
+      chainId: BigInt(chainId),
+      name:
+        chainId === 11155111
+          ? 'sepolia'
+          : chainId === 11155420
+            ? 'optimism-sepolia'
+            : 'unknown',
+    })),
+  },
   ethers: {
     AbstractSigner: class {
       constructor(public provider?: unknown) {}
@@ -144,6 +155,27 @@ describe('SignerService', () => {
       walletId: 20,
       address: '0xMockAddress2',
     });
+  });
+
+  it('should return configured available networks with known names only', () => {
+    (
+      service as unknown as {
+        nodeUriMap: Record<string, string>;
+      }
+    ).nodeUriMap = {
+      '999': 'https://unknown.rpc',
+      '11155111': 'https://test.rpc',
+      '11155420': 'https://test.optimism.rpc',
+    };
+
+    expect(service.getAvailableNetworks()).toEqual([
+      { chainId: 999 },
+      { chainId: 11155111, name: 'sepolia' },
+      {
+        chainId: 11155420,
+        name: 'optimism-sepolia',
+      },
+    ]);
   });
 
   it('should sign a message', async () => {
