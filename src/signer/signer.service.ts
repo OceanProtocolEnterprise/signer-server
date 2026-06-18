@@ -119,8 +119,8 @@ export class SignerService implements OnModuleInit {
 
     const nodeUri = this.nodeUriMap[String(chainId)];
     if (!nodeUri) {
-      throw new Error(
-        `No node URI configured for chain ID ${chainId}`,
+      throw new BadRequestException(
+        `Unsupported chain ID ${chainId}`,
       );
     }
 

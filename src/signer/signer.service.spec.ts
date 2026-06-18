@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SignerFactory } from './signer.factory';
 
@@ -337,10 +338,31 @@ describe('SignerService', () => {
     ).toHaveBeenCalledWith('0xMockAddress2');
   });
 
-  it('should throw when chain ID has no configured node URI', async () => {
-    await expect(service.getNonce(1)).rejects.toThrow(
-      'No node URI configured for chain ID 1',
+  it('should reject unsupported chain ID before provider work', async () => {
+    await expect(service.getNonce(1)).rejects.toMatchObject(
+      {
+        status: 400,
+        message: 'Unsupported chain ID 1',
+      },
     );
+    await expect(
+      service.getNonce(1),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(
+      mockProvider.getTransactionCount,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('should reject unsupported chain ID when getting a transaction', async () => {
+    await expect(
+      service.getTransaction(1, '0xhash'),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: 'Unsupported chain ID 1',
+    });
+    expect(
+      mockProvider.getTransaction,
+    ).not.toHaveBeenCalled();
   });
 
   it('should throw when wallet id is not configured', async () => {
