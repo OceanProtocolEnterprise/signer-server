@@ -31,6 +31,7 @@ import {
   SendTransactionResponse,
   TransactionResponse,
   NonceResponse,
+  AvailableNetworksResponse,
 } from './interfaces/signer-responses.interface';
 import { Public } from '../common/decorators/public.decorator';
 
@@ -88,6 +89,20 @@ export class SignerController {
     return this.signerService.getAddress(
       this.getWalletIdFromRequest(req),
     );
+  }
+
+  @Get('available-networks')
+  @ApiOperation({
+    summary: 'Get configured available networks',
+  })
+  @ApiResponse({
+    status: 200,
+    type: AvailableNetworksResponse,
+  })
+  getAvailableNetworks(): AvailableNetworksResponse {
+    return {
+      networks: this.signerService.getAvailableNetworks(),
+    };
   }
 
   @Post('sign-message')

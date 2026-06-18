@@ -63,3 +63,16 @@ export class NonceResponse {
   @ApiProperty()
   nonce: number;
 }
+
+export class AvailableNetworkResponse {
+  @ApiProperty()
+  chainId: number;
+
+  @ApiPropertyOptional()
+  name?: string;
+}
+
+export class AvailableNetworksResponse {
+  @ApiProperty({ type: [AvailableNetworkResponse] })
+  networks: AvailableNetworkResponse[];
+}
