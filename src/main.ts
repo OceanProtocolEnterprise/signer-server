@@ -38,7 +38,7 @@ async function bootstrap() {
   app.enableCors();
 
   const config = new DocumentBuilder()
-    .setTitle('Signer Service')
+    .setTitle('Signer Server')
     .setDescription(
       'Remote signing with Authentik authentication',
     )
@@ -64,7 +64,7 @@ async function bootstrap() {
 
   await app.listen(port);
   logger.log(
-    `Signer service running on ${tlsOptions ? 'HTTPS' : 'HTTP'} port ${port}`,
+    `Signer server running on ${tlsOptions ? 'HTTPS' : 'HTTP'} port ${port}`,
   );
   logger.log(`Swagger UI available at /${SWAGGER_PATH}`);
   logger.log(
