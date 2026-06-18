@@ -45,6 +45,7 @@ jobs:
           NODE_ENV: test
           PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
           NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
+          JWT_TOKEN: ${{ secrets.JWT_TOKEN }}
           AUTHENTIK_JWKS_URI: ${{ vars.AUTHENTIK_JWKS_URI }}
           AUTHENTIK_ISSUER: ${{ vars.AUTHENTIK_ISSUER }}
           AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
