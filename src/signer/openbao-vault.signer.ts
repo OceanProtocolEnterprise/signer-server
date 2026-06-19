@@ -27,6 +27,7 @@ type VaultSignTransactionResponse = {
 };
 
 const DEFAULT_VAULT_TIMEOUT_MS = 10000;
+const EIP1559_TRANSACTION_PREFIX = '0x02';
 
 export class OpenBaoVaultSigner
   extends ethers.AbstractSigner
@@ -231,12 +232,24 @@ export class OpenBaoVaultSigner
       (resolved.data as string | undefined) ?? '0x';
     const feeData = await this.provider.getFeeData();
     const gasPrice = feeData.gasPrice ?? 0n;
+    const maxFeePerGas =
+      resolved.maxFeePerGas != null
+        ? BigInt(resolved.maxFeePerGas.toString())
+        : undefined;
+    const maxPriorityFeePerGas =
+      resolved.maxPriorityFeePerGas != null
+        ? BigInt(resolved.maxPriorityFeePerGas.toString())
+        : undefined;
     const gasEstimate = await this.provider.estimateGas({
       from,
       to: resolved.to as string,
       value,
       data,
     });
+    const supportsEip1559 =
+      resolved.type === 2 ||
+      maxFeePerGas !== undefined ||
+      maxPriorityFeePerGas !== undefined;
 
     const result =
       await this.request<VaultSignTransactionResponse>(
@@ -248,13 +261,43 @@ export class OpenBaoVaultSigner
           data,
           nonce: ethers.toBeHex(nonce),
           gas: Number(gasEstimate),
-          gasPrice: ethers.toBeHex(gasPrice),
           chainId: Number(network.chainId),
+          ...(supportsEip1559
+            ? {
+                type: 2,
+                ...(maxFeePerGas !== undefined
+                  ? {
+                      maxFeePerGas:
+                        ethers.toBeHex(maxFeePerGas),
+                    }
+                  : {}),
+                ...(maxPriorityFeePerGas !== undefined
+                  ? {
+                      maxPriorityFeePerGas: ethers.toBeHex(
+                        maxPriorityFeePerGas,
+                      ),
+                    }
+                  : {}),
+              }
+            : { gasPrice: ethers.toBeHex(gasPrice) }),
         },
       );
+    const signedTransaction =
+      result.data.signed_transaction;
+
+    if (
+      supportsEip1559 &&
+      !signedTransaction
+        .toLowerCase()
+        .startsWith(EIP1559_TRANSACTION_PREFIX)
+    ) {
+      throw new Error(
+        'Vault returned a non-EIP-1559 signed transaction',
+      );
+    }
 
     return this.provider.broadcastTransaction(
-      result.data.signed_transaction,
+      signedTransaction,
     );
   }
 
