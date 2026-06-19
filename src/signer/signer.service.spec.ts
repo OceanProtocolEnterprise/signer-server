@@ -263,8 +263,8 @@ describe('SignerService', () => {
   });
 
   it('falls back to a legacy transaction when type 2 fails', async () => {
-    const loggerErrorSpy = jest
-      .spyOn(Logger.prototype, 'error')
+    const loggerLogSpy = jest
+      .spyOn(Logger.prototype, 'log')
       .mockImplementation();
     const type2Error = new Error('type 2 failed');
     mockProvider.getFeeData.mockResolvedValue({
@@ -305,7 +305,7 @@ describe('SignerService', () => {
       data: '0xdata',
       gasPrice: 2n,
     });
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
+    expect(loggerLogSpy).toHaveBeenCalledWith(
       'EIP-1559 transaction failed; falling back to legacy transaction',
       type2Error.stack,
     );
