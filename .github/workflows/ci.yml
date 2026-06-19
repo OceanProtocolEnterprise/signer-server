@@ -39,8 +39,8 @@ jobs:
       - name: Unit Tests
         run: npm test
 
-      - name: E2E Tests
-        run: npm run test:e2e
+      - name: E2E Tests (Local Mode)
+        run: npm run test:e2e:local
         env:
           NODE_ENV: test
           PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
@@ -51,8 +51,25 @@ jobs:
           AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
           CHAIN_ID: ${{ vars.CHAIN_ID }}
           ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
-          SIGNER_MODE: ${{ vars.SIGNER_MODE }}
+          SIGNER_MODE: local
           PORT: 3001
+          UPSTREAM_IDP: ${{ vars.UPSTREAM_IDP || 'VM3 Partner Source' }}
+
+      - name: E2E Tests (Auth)
+        run: npm run test:e2e:auth
+        env:
+          NODE_ENV: test
+          PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
+          NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
+          JWT_TOKEN: ${{ secrets.JWT_TOKEN }}
+          AUTHENTIK_JWKS_URI: ${{ vars.AUTHENTIK_JWKS_URI }}
+          AUTHENTIK_ISSUER: ${{ vars.AUTHENTIK_ISSUER }}
+          AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
+          CHAIN_ID: ${{ vars.CHAIN_ID }}
+          ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
+          SIGNER_MODE: local
+          PORT: 3001
+          UPSTREAM_IDP: ${{ vars.UPSTREAM_IDP || 'VM3 Partner Source' }}
 
       - name: Coverage
         run: npm run test:cov

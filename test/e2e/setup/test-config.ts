@@ -1,0 +1,270 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import {
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
+import { AppModule } from '../../../src/app.module';
+import { HttpExceptionFilter } from '../../../src/common/filters/http-exception.filter';
+import { LoggingInterceptor } from '../../../src/common/interceptors/logging.interceptor';
+import * as request from 'supertest';
+import { ConfigService } from '@nestjs/config';
+
+// Environment detection
+export const isVaultAvailable = (): boolean => {
+  const hasVaultConfig = !!(
+    process.env.VAULT_URL &&
+    process.env.VAULT_TOKEN &&
+    process.env.SIGNER_MODE === 'vault'
+  );
+
+  const isGitHubActions = !!process.env.GITHUB_ACTIONS;
+
+  // Only run vault tests if Vault is configured and not in CI
+  return hasVaultConfig && !isGitHubActions;
+};
+
+export const isGitHubActions = (): boolean => {
+  return !!process.env.GITHUB_ACTIONS;
+};
+
+export const isLocalDevelopment = (): boolean => {
+  return (
+    process.env.NODE_ENV === 'test' &&
+    !process.env.GITHUB_ACTIONS
+  );
+};
+
+// Load JWT token from environment
+export const TEST_VALID_JWT = process.env.JWT_TOKEN || '';
+export const TEST_INVALID_JWT = 'invalid.jwt.token';
+export const TEST_EXPIRED_JWT =
+  'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjEwMDAwMDAwMDB9.signature';
+
+export interface TestConfig {
+  signerMode: 'local' | 'vault';
+  validWalletId: number;
+  invalidWalletId: number;
+  testChainId: number;
+  testAddress: string;
+  testPrivateKey?: string;
+}
+
+export const LOCAL_TEST_CONFIG: TestConfig = {
+  signerMode: 'local',
+  validWalletId: 1,
+  invalidWalletId: 999,
+  testChainId: 11155111,
+  testAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+  testPrivateKey:
+    '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
+};
+
+export const VAULT_TEST_CONFIG: TestConfig = {
+  signerMode: 'vault',
+  validWalletId: 1,
+  invalidWalletId: 999,
+  testChainId: 11155111,
+  testAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+};
+
+export class TestApp {
+  private app: INestApplication;
+  private module: TestingModule;
+
+  async init(configOverride?: Record<string, any>) {
+    const moduleBuilder = Test.createTestingModule({
+      imports: [AppModule],
+    });
+
+    // Create a mock ConfigService that properly handles the overrides
+    const mockConfigService = {
+      get: jest.fn((key: string) => {
+        // Handle signer configuration
+        if (key === 'signer.mode') {
+          return (
+            configOverride?.signerMode ||
+            process.env.SIGNER_MODE ||
+            'local'
+          );
+        }
+        if (key === 'signer.privateKeys') {
+          if (configOverride?.privateKeys) {
+            return configOverride.privateKeys;
+          }
+          // Try to parse from environment
+          try {
+            return JSON.parse(
+              process.env.PRIVATE_KEYS || '[]',
+            );
+          } catch {
+            return [
+              {
+                walletId: 1,
+                key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
+              },
+            ];
+          }
+        }
+        if (key === 'signer.nodeUriMap') {
+          if (configOverride?.nodeUriMap) {
+            return configOverride.nodeUriMap;
+          }
+          try {
+            return JSON.parse(
+              process.env.NODE_URI_MAP ||
+                '{"11155111":"https://ethereum-sepolia.publicnode.com"}',
+            );
+          } catch {
+            return {
+              '11155111':
+                'https://ethereum-sepolia.publicnode.com',
+            };
+          }
+        }
+        if (key === 'signer.openBao') {
+          return (
+            configOverride?.openBao || {
+              url:
+                process.env.VAULT_URL ||
+                'http://127.0.0.1:8200',
+              token:
+                process.env.VAULT_TOKEN || 'test-token',
+              ethereumMount: 'ethereum',
+              kvStorePath: 'secret',
+              timeoutMs: 10000,
+            }
+          );
+        }
+
+        // Handle Authentik configuration
+        if (key === 'authentik.jwksUri') {
+          return (
+            configOverride?.authentikJwksUri ||
+            process.env.AUTHENTIK_JWKS_URI ||
+            'https://test.jwks.uri'
+          );
+        }
+        if (key === 'authentik.issuer') {
+          return (
+            configOverride?.authentikIssuer ||
+            process.env.AUTHENTIK_ISSUER ||
+            'https://test.issuer'
+          );
+        }
+        if (key === 'authentik.audience') {
+          return (
+            configOverride?.authentikAudience ||
+            process.env.AUTHENTIK_AUDIENCE ||
+            'test-audience'
+          );
+        }
+        if (key === 'authentik.upstreamIdp') {
+          // If upstreamIdp is explicitly set to undefined, return undefined
+          if (
+            configOverride &&
+            'upstreamIdp' in configOverride
+          ) {
+            return configOverride.upstreamIdp;
+          }
+          // Otherwise use environment variable or default
+          return (
+            process.env.UPSTREAM_IDP || 'VM3 Partner Source'
+          );
+        }
+
+        return undefined;
+      }),
+    };
+
+    moduleBuilder
+      .overrideProvider(ConfigService)
+      .useValue(mockConfigService);
+
+    this.module = await moduleBuilder.compile();
+    this.app = this.module.createNestApplication();
+
+    this.app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+      }),
+    );
+    this.app.useGlobalFilters(new HttpExceptionFilter());
+    this.app.enableCors();
+
+    await this.app.init();
+    return this.app;
+  }
+
+  async close() {
+    await this.app?.close();
+  }
+
+  getApp() {
+    return this.app;
+  }
+
+  getModule() {
+    return this.module;
+  }
+
+  request() {
+    return request(this.app.getHttpServer());
+  }
+}
+
+export const createTestApp = async (
+  configOverride?: Record<string, any>,
+) => {
+  const testApp = new TestApp();
+  await testApp.init(configOverride);
+  return testApp;
+};
+
+export const generateValidHeaders = (
+  jwtToken: string = TEST_VALID_JWT,
+) => {
+  if (!jwtToken) {
+    console.warn(
+      '⚠️ JWT_TOKEN is not set in environment variables',
+    );
+    return {
+      Authorization: 'Bearer dummy-token-for-testing',
+    };
+  }
+  return {
+    Authorization: `Bearer ${jwtToken}`,
+  };
+};
+
+export const generateInvalidHeaders = () => {
+  return {
+    Authorization: `Bearer ${TEST_INVALID_JWT}`,
+  };
+};
+
+export const generateHeadersWithToken = (token: string) => {
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+};
+
+export const skipIfVaultNotAvailable = () => {
+  if (!isVaultAvailable()) {
+    console.warn(
+      '⚠️ Vault is not available, skipping Vault-dependent test',
+    );
+    return true;
+  }
+  return false;
+};
+
+export const skipIfNoValidToken = () => {
+  if (!TEST_VALID_JWT) {
+    console.warn(
+      '⚠️ JWT_TOKEN is not set, skipping authentication test',
+    );
+    return true;
+  }
+  return false;
+};
