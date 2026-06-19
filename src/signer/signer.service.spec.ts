@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SignerFactory } from './signer.factory';
 
@@ -89,6 +92,8 @@ describe('SignerService', () => {
     );
     mockProvider.getFeeData.mockResolvedValue({
       gasPrice: 1n,
+      maxFeePerGas: 3n,
+      maxPriorityFeePerGas: 1n,
     });
 
     const module: TestingModule =
@@ -224,6 +229,9 @@ describe('SignerService', () => {
       to: '0xto',
       value: 100n,
       data: '0xdata',
+      type: 2,
+      maxFeePerGas: 3n,
+      maxPriorityFeePerGas: 1n,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
       '0xMockAddress1',
@@ -252,6 +260,55 @@ describe('SignerService', () => {
       ),
     ).rejects.toThrow('Insufficient funds for transaction');
     expect(mockSendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a legacy transaction when type 2 fails', async () => {
+    const loggerErrorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation();
+    const type2Error = new Error('type 2 failed');
+    mockProvider.getFeeData.mockResolvedValue({
+      gasPrice: 2n,
+      maxFeePerGas: 10n,
+      maxPriorityFeePerGas: 1n,
+    });
+    mockSendTransaction
+      .mockRejectedValueOnce(type2Error)
+      .mockResolvedValueOnce({
+        hash: '0xlegacyhash',
+        from: '0xMockAddress1',
+        to: '0xto',
+        nonce: 2,
+        wait: mockWait,
+      });
+
+    const result = await service.sendTransaction(
+      11155111,
+      '0xto',
+      '100',
+      '0xdata',
+      undefined,
+    );
+
+    expect(result.hash).toBe('0xlegacyhash');
+    expect(mockSendTransaction).toHaveBeenNthCalledWith(1, {
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
+      type: 2,
+      maxFeePerGas: 10n,
+      maxPriorityFeePerGas: 1n,
+    });
+    expect(mockSendTransaction).toHaveBeenNthCalledWith(2, {
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
+      gasPrice: 2n,
+    });
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'EIP-1559 transaction failed; falling back to legacy transaction',
+      type2Error.stack,
+    );
   });
 
   it('should send transaction with selected wallet', async () => {

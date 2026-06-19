@@ -231,12 +231,24 @@ export class OpenBaoVaultSigner
       (resolved.data as string | undefined) ?? '0x';
     const feeData = await this.provider.getFeeData();
     const gasPrice = feeData.gasPrice ?? 0n;
+    const maxFeePerGas =
+      resolved.maxFeePerGas != null
+        ? BigInt(resolved.maxFeePerGas.toString())
+        : undefined;
+    const maxPriorityFeePerGas =
+      resolved.maxPriorityFeePerGas != null
+        ? BigInt(resolved.maxPriorityFeePerGas.toString())
+        : undefined;
     const gasEstimate = await this.provider.estimateGas({
       from,
       to: resolved.to as string,
       value,
       data,
     });
+    const supportsEip1559 =
+      resolved.type === 2 ||
+      maxFeePerGas !== undefined ||
+      maxPriorityFeePerGas !== undefined;
 
     const result =
       await this.request<VaultSignTransactionResponse>(
@@ -248,8 +260,25 @@ export class OpenBaoVaultSigner
           data,
           nonce: ethers.toBeHex(nonce),
           gas: Number(gasEstimate),
-          gasPrice: ethers.toBeHex(gasPrice),
           chainId: Number(network.chainId),
+          ...(supportsEip1559
+            ? {
+                type: 2,
+                ...(maxFeePerGas !== undefined
+                  ? {
+                      maxFeePerGas:
+                        ethers.toBeHex(maxFeePerGas),
+                    }
+                  : {}),
+                ...(maxPriorityFeePerGas !== undefined
+                  ? {
+                      maxPriorityFeePerGas: ethers.toBeHex(
+                        maxPriorityFeePerGas,
+                      ),
+                    }
+                  : {}),
+              }
+            : { gasPrice: ethers.toBeHex(gasPrice) }),
         },
       );
 

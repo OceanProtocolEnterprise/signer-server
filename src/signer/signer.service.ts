@@ -2,6 +2,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -30,6 +31,7 @@ export class SignerService implements OnModuleInit {
   private defaultWalletId: number;
   private defaultVaultSigner?: ManagedSigner;
   private signerMode: SignerMode;
+  private readonly logger = new Logger(SignerService.name);
   private openBaoConfig?: Omit<
     OpenBaoSignerConfig,
     'walletId'
@@ -136,6 +138,7 @@ export class SignerService implements OnModuleInit {
     to: string,
     value: bigint,
     data: string,
+    maxGasCost?: bigint,
   ) {
     const [balance, feeData, gasEstimate] =
       await Promise.all([
@@ -149,7 +152,9 @@ export class SignerService implements OnModuleInit {
         }),
       ]);
     const gasPrice =
-      feeData.gasPrice ?? feeData.maxFeePerGas;
+      maxGasCost ??
+      feeData.gasPrice ??
+      feeData.maxFeePerGas;
 
     if (!gasPrice) {
       return;
@@ -162,6 +167,28 @@ export class SignerService implements OnModuleInit {
         `Insufficient funds for transaction: wallet ${from} on chain ID ${chainId} has ${balance.toString()} wei, needs at least ${required.toString()} wei`,
       );
     }
+  }
+
+  private async sendAndWait(
+    signer: ethers.AbstractSigner,
+    provider: ethers.JsonRpcProvider,
+    txRequest: ethers.TransactionRequest,
+  ): Promise<SendTransactionResult> {
+    const tx = await signer
+      .connect(provider)
+      .sendTransaction(txRequest);
+    const receipt = await tx.wait();
+    if (!receipt)
+      throw new Error('Transaction receipt not available');
+    return {
+      hash: tx.hash,
+      from: tx.from,
+      to: tx.to, // ethers TransactionResponse.to can be null, but we know it's not for our call
+      nonce: tx.nonce,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed.toString(),
+      status: receipt.status,
+    };
   }
 
   private async getSigner(
@@ -251,6 +278,8 @@ export class SignerService implements OnModuleInit {
     const signer = await this.getSigner(walletId);
     const provider = this.getProvider(chainId);
     const txValue = BigInt(value);
+    const feeData = await provider.getFeeData();
+
     await this.assertSufficientFunds(
       provider,
       chainId,
@@ -258,26 +287,58 @@ export class SignerService implements OnModuleInit {
       to,
       txValue,
       data,
+      feeData.maxFeePerGas ?? undefined,
     );
-    const tx = await signer.signer
-      .connect(provider)
-      .sendTransaction({
+
+    const eip1559Transaction: ethers.TransactionRequest = {
+      to,
+      value: txValue,
+      data,
+      type: 2,
+    };
+
+    if (feeData.maxFeePerGas != null) {
+      eip1559Transaction.maxFeePerGas =
+        feeData.maxFeePerGas;
+    }
+
+    if (feeData.maxPriorityFeePerGas != null) {
+      eip1559Transaction.maxPriorityFeePerGas =
+        feeData.maxPriorityFeePerGas;
+    }
+
+    try {
+      return await this.sendAndWait(
+        signer.signer,
+        provider,
+        eip1559Transaction,
+      );
+    } catch (error) {
+      this.logger.error(
+        'EIP-1559 transaction failed; falling back to legacy transaction',
+        error instanceof Error
+          ? error.stack
+          : String(error),
+      );
+
+      const gasPrice =
+        feeData.gasPrice ?? feeData.maxFeePerGas;
+      const legacyTransaction: ethers.TransactionRequest = {
         to,
         value: txValue,
         data,
-      });
-    const receipt = await tx.wait();
-    if (!receipt)
-      throw new Error('Transaction receipt not available');
-    return {
-      hash: tx.hash,
-      from: tx.from,
-      to: tx.to, // ethers TransactionResponse.to can be null, but we know it's not for our call
-      nonce: tx.nonce,
-      blockNumber: receipt.blockNumber,
-      gasUsed: receipt.gasUsed.toString(),
-      status: receipt.status,
-    };
+      };
+
+      if (gasPrice != null) {
+        legacyTransaction.gasPrice = gasPrice;
+      }
+
+      return this.sendAndWait(
+        signer.signer,
+        provider,
+        legacyTransaction,
+      );
+    }
   }
 
   async getTransaction(
