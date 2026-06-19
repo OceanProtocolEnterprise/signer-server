@@ -268,7 +268,7 @@ describe('OpenBaoVaultSigner', () => {
         ok: true,
         json: jest.fn().mockResolvedValue({
           data: {
-            signed_transaction: '0xSignedTransaction',
+            signed_transaction: '0x02SignedTransaction',
           },
         }),
       } as unknown as Response);
@@ -307,7 +307,67 @@ describe('OpenBaoVaultSigner', () => {
       maxPriorityFeePerGas: '0x01',
     });
     expect(broadcastTransaction).toHaveBeenCalledWith(
-      '0xSignedTransaction',
+      '0x02SignedTransaction',
     );
+  });
+
+  it('does not broadcast when Vault returns a legacy transaction for an EIP-1559 request', async () => {
+    const broadcastTransaction = jest.fn();
+    const provider = {
+      getTransactionCount: jest.fn().mockResolvedValue(7),
+      getNetwork: jest
+        .fn()
+        .mockResolvedValue({ chainId: 11155111n }),
+      getFeeData: jest.fn().mockResolvedValue({
+        gasPrice: 1n,
+      }),
+      estimateGas: jest.fn().mockResolvedValue(21000n),
+      broadcastTransaction,
+    };
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          data: {
+            keys: [
+              '0xcf3185a502be4b5eb2c4eb81646ecf7dd0ac2f22',
+            ],
+          },
+        }),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          data: {
+            signed_transaction: '0xf801',
+          },
+        }),
+      } as unknown as Response);
+
+    const signer = new OpenBaoVaultSigner(
+      'http://vault.test/',
+      'vault-token',
+      '/ethereum/',
+      '/secret/',
+      undefined,
+      provider as unknown as Parameters<
+        OpenBaoVaultSigner['connect']
+      >[0],
+    );
+
+    await expect(
+      signer.sendTransaction({
+        to: '0x0000000000000000000000000000000000000001',
+        value: 100n,
+        data: '0x',
+        type: 2,
+        maxFeePerGas: 10n,
+        maxPriorityFeePerGas: 1n,
+      }),
+    ).rejects.toThrow(
+      'Vault returned a non-EIP-1559 signed transaction',
+    );
+    expect(broadcastTransaction).not.toHaveBeenCalled();
   });
 });

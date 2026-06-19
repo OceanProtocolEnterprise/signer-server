@@ -297,6 +297,8 @@ export class SignerService implements OnModuleInit {
       type: 2,
     };
 
+    this.logger.log('feeData:', feeData);
+
     if (feeData.maxFeePerGas != null) {
       eip1559Transaction.maxFeePerGas =
         feeData.maxFeePerGas;
@@ -306,7 +308,10 @@ export class SignerService implements OnModuleInit {
       eip1559Transaction.maxPriorityFeePerGas =
         feeData.maxPriorityFeePerGas;
     }
-
+    this.logger.log(
+      'EIP-1559 transaction:',
+      eip1559Transaction,
+    );
     try {
       return await this.sendAndWait(
         signer.signer,
