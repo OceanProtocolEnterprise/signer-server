@@ -218,9 +218,6 @@ describe('SignerService', () => {
       from: '0xMockAddress1',
       to: '0xto',
       nonce: 1,
-      blockNumber: 123,
-      gasUsed: '21000',
-      status: 1,
     });
     expect(
       mockWallets.get(`0x${'1'.repeat(64)}`)!.connect,
@@ -309,6 +306,7 @@ describe('SignerService', () => {
       'EIP-1559 transaction failed; falling back to legacy transaction',
       type2Error.stack,
     );
+    expect(mockWait).not.toHaveBeenCalled();
   });
 
   it('should send transaction with selected wallet', async () => {

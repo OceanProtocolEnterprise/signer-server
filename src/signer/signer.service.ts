@@ -169,7 +169,7 @@ export class SignerService implements OnModuleInit {
     }
   }
 
-  private async sendAndWait(
+  private async sendAndReturn(
     signer: ethers.AbstractSigner,
     provider: ethers.JsonRpcProvider,
     txRequest: ethers.TransactionRequest,
@@ -177,17 +177,11 @@ export class SignerService implements OnModuleInit {
     const tx = await signer
       .connect(provider)
       .sendTransaction(txRequest);
-    const receipt = await tx.wait();
-    if (!receipt)
-      throw new Error('Transaction receipt not available');
     return {
       hash: tx.hash,
       from: tx.from,
       to: tx.to, // ethers TransactionResponse.to can be null, but we know it's not for our call
       nonce: tx.nonce,
-      blockNumber: receipt.blockNumber,
-      gasUsed: receipt.gasUsed.toString(),
-      status: receipt.status,
     };
   }
 
@@ -307,7 +301,7 @@ export class SignerService implements OnModuleInit {
         feeData.maxPriorityFeePerGas;
     }
     try {
-      return await this.sendAndWait(
+      return await this.sendAndReturn(
         signer.signer,
         provider,
         eip1559Transaction,
@@ -332,7 +326,7 @@ export class SignerService implements OnModuleInit {
         legacyTransaction.gasPrice = gasPrice;
       }
 
-      return this.sendAndWait(
+      return this.sendAndReturn(
         signer.signer,
         provider,
         legacyTransaction,

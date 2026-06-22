@@ -29,12 +29,6 @@ export class SendTransactionResult {
   to: string | null;
   @ApiProperty()
   nonce: number;
-  @ApiProperty()
-  blockNumber: number;
-  @ApiProperty()
-  gasUsed: string;
-  @ApiProperty({ nullable: true })
-  status: number | null;
 }
 export type SendTransactionResponse = SendTransactionResult;
 
