@@ -193,6 +193,16 @@ describe('SignerService', () => {
     ).toHaveBeenCalledWith('hello');
   });
 
+  it('should sign raw message bytes', async () => {
+    const rawMessage = Uint8Array.from([1, 2, 3]);
+    const signature = await service.signMessage(rawMessage);
+
+    expect(signature).toBe('0xsigned1');
+    expect(
+      mockWallets.get(`0x${'1'.repeat(64)}`)!.signMessage,
+    ).toHaveBeenCalledWith(rawMessage);
+  });
+
   it('should sign a message with selected wallet', async () => {
     const signature = await service.signMessage(
       'hello',

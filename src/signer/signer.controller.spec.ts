@@ -82,6 +82,28 @@ describe('SignerController', () => {
     );
   });
 
+  it('uses raw message bytes when signing a raw message', async () => {
+    signerService.getAddress.mockResolvedValue({
+      walletId: 7,
+      address: '0xAddress',
+    });
+    signerService.signMessage.mockResolvedValue(
+      '0xSignature',
+    );
+
+    await controller.signMessage(
+      {
+        rawMessage: '0x010203',
+      },
+      reqWithWalletId(7),
+    );
+
+    expect(signerService.signMessage).toHaveBeenCalledWith(
+      Uint8Array.from([1, 2, 3]),
+      7,
+    );
+  });
+
   it('uses JWT wallet id when sending a transaction', async () => {
     signerService.sendTransaction.mockResolvedValue({
       hash: '0xHash',

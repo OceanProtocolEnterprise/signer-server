@@ -254,7 +254,7 @@ export class SignerService implements OnModuleInit {
   }
 
   async signMessage(
-    message: string,
+    message: string | Uint8Array,
     walletId?: number,
   ): Promise<string> {
     return (
