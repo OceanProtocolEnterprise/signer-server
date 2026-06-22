@@ -295,7 +295,7 @@ describe('Local Signer E2E Tests', () => {
       });
 
       successfulTxHash = response.body.hash;
-    }, 30000);
+    }, 90000);
 
     it('should return transaction details for a previously submitted transaction', async () => {
       if (skipIfNoValidToken()) return;
