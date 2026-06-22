@@ -8,15 +8,14 @@ import {
   skipIfNoValidToken,
 } from '../setup/test-config';
 
-// Skip the entire test suite if Vault is not available
 const describeIfVault = isVaultAvailable()
   ? describe
   : describe.skip;
 
 describeIfVault('Vault Signer E2E Tests', () => {
   let testApp: TestApp;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let validHeaders: any;
-  let testWalletAddress: string;
 
   beforeAll(async () => {
     if (!isVaultAvailable()) {
@@ -127,28 +126,23 @@ describeIfVault('Vault Signer E2E Tests', () => {
           /^0x[a-fA-F0-9]{40}$/,
         ),
       });
-
-      testWalletAddress = response.body.address;
     });
 
     it('should return 200 OK for /address without wallet ID - assert first account address', async () => {
       if (skipIfNoValidToken()) return;
 
-      // First request with wallet ID
       const responseWithWallet = await testApp
         .request()
         .get('/address')
         .set(validHeaders)
         .expect(200);
 
-      // Second request without wallet ID (using the same token)
       const responseWithoutWallet = await testApp
         .request()
         .get('/address')
         .set(validHeaders)
         .expect(200);
 
-      // Both should return the same address for the same wallet
       expect(responseWithWallet.body.address).toBe(
         responseWithoutWallet.body.address,
       );
@@ -178,6 +172,7 @@ describeIfVault('Vault Signer E2E Tests', () => {
       );
       expect(
         response.body.networks.some(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (n: any) => n.chainId === 11155111,
         ),
       ).toBe(true);
@@ -269,7 +264,6 @@ describeIfVault('Vault Signer E2E Tests', () => {
         .set(validHeaders)
         .send(tx);
 
-      // This might fail if the account doesn't have enough ETH
       if (response.status === 200) {
         expect(response.body).toMatchObject({
           hash: expect.stringMatching(
@@ -478,6 +472,128 @@ describeIfVault('Vault Signer E2E Tests', () => {
           'Unsupported chain ID',
         ),
       });
+    });
+  });
+  describe('UPSTREAM_IDP Authorization', () => {
+    const createInvalidApp = async () => {
+      const rpcUrl =
+        process.env.ETHEREUM_RPC_URL ||
+        'https://ethereum-sepolia.publicnode.com';
+
+      return createTestApp({
+        signerMode: 'vault',
+        upstreamIdp: 'Different-Provider',
+        openBao: {
+          url:
+            process.env.VAULT_URL ||
+            'http://127.0.0.1:8200',
+          token: process.env.VAULT_TOKEN || 'test-token',
+          ethereumMount: 'ethereum',
+          kvStorePath: 'secret',
+          timeoutMs: 10000,
+        },
+        nodeUriMap: {
+          '11155111': rpcUrl,
+          '11155420': 'https://sepolia.optimism.io',
+        },
+      });
+    };
+
+    it('should return 403 Forbidden for /address', async () => {
+      if (skipIfNoValidToken()) return;
+
+      const app = await createInvalidApp();
+
+      try {
+        await app
+          .request()
+          .get('/address')
+          .set(validHeaders)
+          .expect(403);
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('should return 403 Forbidden for /sign-message', async () => {
+      if (skipIfNoValidToken()) return;
+
+      const app = await createInvalidApp();
+
+      try {
+        await app
+          .request()
+          .post('/sign-message')
+          .set(validHeaders)
+          .send({
+            message: 'test',
+          })
+          .expect(403);
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('should return 403 Forbidden for /send-transaction', async () => {
+      if (skipIfNoValidToken()) return;
+
+      const app = await createInvalidApp();
+
+      try {
+        await app
+          .request()
+          .post('/send-transaction')
+          .set(validHeaders)
+          .send({
+            chainId: VAULT_TEST_CONFIG.testChainId,
+            to: VAULT_TEST_CONFIG.testAddress,
+            value: '0',
+            data: '0x',
+          })
+          .expect(403);
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('should return 403 Forbidden for /transaction/:hash', async () => {
+      if (skipIfNoValidToken()) return;
+
+      const app = await createInvalidApp();
+
+      try {
+        await app
+          .request()
+          .get(
+            '/transaction/0x0000000000000000000000000000000000000000000000000000000000000000',
+          )
+          .query({
+            chainId: VAULT_TEST_CONFIG.testChainId,
+          })
+          .set(validHeaders)
+          .expect(403);
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('should return 403 Forbidden for /nonce', async () => {
+      if (skipIfNoValidToken()) return;
+
+      const app = await createInvalidApp();
+
+      try {
+        await app
+          .request()
+          .get('/nonce')
+          .query({
+            chainId: VAULT_TEST_CONFIG.testChainId,
+          })
+          .set(validHeaders)
+          .expect(403);
+      } finally {
+        await app.close();
+      }
     });
   });
 });

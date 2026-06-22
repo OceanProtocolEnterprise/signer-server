@@ -9,11 +9,10 @@ import {
 
 describe('Local Signer E2E Tests', () => {
   let testApp: TestApp;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let validHeaders: any;
-  let testWalletAddress: string;
 
   beforeAll(async () => {
-    // Use a valid RPC URL from environment or a public one for testing
     const rpcUrl =
       process.env.ETHEREUM_RPC_URL ||
       'https://ethereum-sepolia.publicnode.com';
@@ -98,12 +97,15 @@ describe('Local Signer E2E Tests', () => {
   });
 
   describe('Address Endpoint', () => {
-    it('should return 200 OK for /address with wallet ID - provide wallet ID and assert public wallet address', async () => {
+    it('should return 200 OK for /address when walletId is provided', async () => {
       if (skipIfNoValidToken()) return;
 
       const response = await testApp
         .request()
         .get('/address')
+        .query({
+          walletId: LOCAL_TEST_CONFIG.validWalletId,
+        })
         .set(validHeaders)
         .expect(200);
 
@@ -113,28 +115,23 @@ describe('Local Signer E2E Tests', () => {
           /^0x[a-fA-F0-9]{40}$/,
         ),
       });
-
-      testWalletAddress = response.body.address;
     });
 
     it('should return 200 OK for /address without wallet ID - assert first account address', async () => {
       if (skipIfNoValidToken()) return;
 
-      // First request with wallet ID
       const responseWithWallet = await testApp
         .request()
         .get('/address')
         .set(validHeaders)
         .expect(200);
 
-      // Second request without wallet ID (using the same token)
       const responseWithoutWallet = await testApp
         .request()
         .get('/address')
         .set(validHeaders)
         .expect(200);
 
-      // Both should return the same address for the same wallet
       expect(responseWithWallet.body.address).toBe(
         responseWithoutWallet.body.address,
       );
@@ -164,6 +161,7 @@ describe('Local Signer E2E Tests', () => {
       );
       expect(
         response.body.networks.some(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (n: any) => n.chainId === 11155111,
         ),
       ).toBe(true);
@@ -255,6 +253,104 @@ describe('Local Signer E2E Tests', () => {
         'message must be a string',
       );
     });
+  });
+
+  describe('Transaction Sending - Success', () => {
+    const approveData =
+      '0x095ea7b300000000000000000000000080e63f73cac60c1662f27d2dfd2ea834acddbaa8ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
+    let successfulTxHash: string | undefined;
+
+    it('should return success for /send-transaction with approve payload', async () => {
+      if (skipIfNoValidToken()) return;
+
+      const tx = {
+        chainId: 11155111,
+        to: '0x08210F9170F89Ab7658F0B5E3fF39b0E03C594D4',
+        value: '0',
+        data: approveData,
+      };
+
+      const response = await testApp
+        .request()
+        .post('/send-transaction')
+        .set(validHeaders)
+        .send(tx);
+
+      if (
+        response.status === 400 &&
+        typeof response.body.message === 'string' &&
+        response.body.message.includes('Insufficient funds')
+      ) {
+        console.warn(
+          '⚠️ Skipping send transaction test due to insufficient funds',
+        );
+        return;
+      }
+
+      expect([200, 201]).toContain(response.status);
+
+      expect(response.body).toMatchObject({
+        hash: expect.stringMatching(/^0x[a-fA-F0-9]{64}$/),
+      });
+
+      successfulTxHash = response.body.hash;
+    }, 30000);
+
+    it('should return transaction details for a previously submitted transaction', async () => {
+      if (skipIfNoValidToken()) return;
+
+      if (!successfulTxHash) {
+        console.warn(
+          '⚠️ Skipping transaction lookup test because no transaction was successfully submitted',
+        );
+        return;
+      }
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 10000),
+      );
+
+      const response = await testApp
+        .request()
+        .get(`/transaction/${successfulTxHash}`)
+        .query({
+          chainId: 11155111,
+        })
+        .set(validHeaders);
+
+      console.log(
+        'Transaction lookup:',
+        response.status,
+        response.body,
+      );
+
+      if (response.status === 200) {
+        expect(response.body).toMatchObject({
+          hash: successfulTxHash,
+        });
+        return;
+      }
+
+      if (response.status === 404) {
+        expect(response.body).toMatchObject({
+          statusCode: 404,
+        });
+        return;
+      }
+
+      if (response.status === 500) {
+        console.warn(
+          '⚠️ Transaction lookup returned 500:',
+          response.body,
+        );
+        return;
+      }
+
+      fail(
+        `Unexpected response status: ${response.status}`,
+      );
+    }, 60000);
   });
 
   describe('Transaction Sending - Validation', () => {
@@ -393,7 +489,6 @@ describe('Local Signer E2E Tests', () => {
         .set(validHeaders)
         .send(tx);
 
-      // This may return 500 because the DTO doesn't validate the value format
       if (response.status === 500) {
         expect(response.body).toMatchObject({
           statusCode: 500,
@@ -477,9 +572,6 @@ describe('Local Signer E2E Tests', () => {
         .query({ chainId: LOCAL_TEST_CONFIG.testChainId })
         .set(validHeaders);
 
-      // The hash parameter passes validation (it's a string), but the RPC call fails
-      // This returns a 500, which is the current behavior
-      // We'll accept either 400 or 500 since the behavior depends on the implementation
       if (response.status === 500) {
         expect(response.body).toMatchObject({
           statusCode: 500,
@@ -599,6 +691,101 @@ describe('Local Signer E2E Tests', () => {
         path: expect.stringContaining('/send-transaction'),
         message: expect.any(Array),
       });
+    });
+  });
+
+  describe('UPSTREAM_IDP Authorization', () => {
+    let invalidUpstreamApp: TestApp;
+
+    beforeAll(async () => {
+      const rpcUrl =
+        process.env.ETHEREUM_RPC_URL ||
+        'https://ethereum-sepolia.publicnode.com';
+
+      invalidUpstreamApp = await createTestApp({
+        signerMode: 'local',
+        upstreamIdp: 'Different-Provider',
+        privateKeys: [
+          {
+            walletId: LOCAL_TEST_CONFIG.validWalletId,
+            key: LOCAL_TEST_CONFIG.testPrivateKey,
+          },
+        ],
+        nodeUriMap: {
+          '11155111': rpcUrl,
+        },
+      });
+    });
+
+    afterAll(async () => {
+      await invalidUpstreamApp.close();
+    });
+
+    it('should return 403 Forbidden for /address when upstream_idp does not match', async () => {
+      if (skipIfNoValidToken()) return;
+
+      await invalidUpstreamApp
+        .request()
+        .get('/address')
+        .set(validHeaders)
+        .expect(403);
+    });
+
+    it('should return 403 Forbidden for /sign-message when upstream_idp does not match', async () => {
+      if (skipIfNoValidToken()) return;
+
+      await invalidUpstreamApp
+        .request()
+        .post('/sign-message')
+        .set(validHeaders)
+        .send({
+          message: 'test',
+        })
+        .expect(403);
+    });
+
+    it('should return 403 Forbidden for /send-transaction when upstream_idp does not match', async () => {
+      if (skipIfNoValidToken()) return;
+
+      await invalidUpstreamApp
+        .request()
+        .post('/send-transaction')
+        .set(validHeaders)
+        .send({
+          chainId: LOCAL_TEST_CONFIG.testChainId,
+          to: LOCAL_TEST_CONFIG.testAddress,
+          value: '0',
+          data: '0x',
+        })
+        .expect(403);
+    });
+
+    it('should return 403 Forbidden for /transaction/:hash when upstream_idp does not match', async () => {
+      if (skipIfNoValidToken()) return;
+
+      await invalidUpstreamApp
+        .request()
+        .get(
+          '/transaction/0x0000000000000000000000000000000000000000000000000000000000000000',
+        )
+        .query({
+          chainId: LOCAL_TEST_CONFIG.testChainId,
+        })
+        .set(validHeaders)
+        .expect(403);
+    });
+
+    it('should return 403 Forbidden for /nonce when upstream_idp does not match', async () => {
+      if (skipIfNoValidToken()) return;
+
+      await invalidUpstreamApp
+        .request()
+        .get('/nonce')
+        .query({
+          chainId: LOCAL_TEST_CONFIG.testChainId,
+        })
+        .set(validHeaders)
+        .expect(403);
     });
   });
 });

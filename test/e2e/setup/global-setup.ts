@@ -1,14 +1,9 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 module.exports = async () => {
   console.log('🚀 Starting E2E test suite...');
 
-  // Load environment variables from .env file
   const envPath = path.resolve(process.cwd(), '.env');
   const result = dotenv.config({ path: envPath });
 
@@ -22,7 +17,6 @@ module.exports = async () => {
     );
   }
 
-  // Also load .env.test if it exists
   const testEnvPath = path.resolve(
     process.cwd(),
     '.env.test',
@@ -34,13 +28,11 @@ module.exports = async () => {
     );
   }
 
-  // Check for GitHub Actions environment
   const isGitHubActions = !!process.env.GITHUB_ACTIONS;
   if (isGitHubActions) {
     console.log('🔧 Running in GitHub Actions environment');
   }
 
-  // Check for required environment variables
   const requiredVars = [
     'AUTHENTIK_JWKS_URI',
     'AUTHENTIK_ISSUER',
@@ -61,7 +53,6 @@ module.exports = async () => {
     }
   }
 
-  // Check for JWT token
   if (!process.env.JWT_TOKEN) {
     if (isGitHubActions) {
       console.warn(
@@ -82,7 +73,6 @@ module.exports = async () => {
     console.log('✅ JWT_TOKEN loaded successfully');
   }
 
-  // Check for PRIVATE_KEYS
   if (!process.env.PRIVATE_KEYS) {
     if (isGitHubActions) {
       console.warn(
@@ -98,7 +88,6 @@ module.exports = async () => {
     console.log('✅ PRIVATE_KEYS loaded successfully');
   }
 
-  // Check for NODE_URI_MAP
   if (!process.env.NODE_URI_MAP) {
     if (isGitHubActions) {
       console.warn(
@@ -114,10 +103,11 @@ module.exports = async () => {
     console.log('✅ NODE_URI_MAP loaded successfully');
   }
 
-  // Create test directories if needed
   const fs = require('fs');
   const testDir = path.join(__dirname, '..', 'temp');
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
   if (!fs.existsSync(testDir)) {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     fs.mkdirSync(testDir, { recursive: true });
   }
 

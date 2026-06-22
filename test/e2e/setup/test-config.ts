@@ -5,11 +5,9 @@ import {
 } from '@nestjs/common';
 import { AppModule } from '../../../src/app.module';
 import { HttpExceptionFilter } from '../../../src/common/filters/http-exception.filter';
-import { LoggingInterceptor } from '../../../src/common/interceptors/logging.interceptor';
 import * as request from 'supertest';
 import { ConfigService } from '@nestjs/config';
 
-// Environment detection
 export const isVaultAvailable = (): boolean => {
   const hasVaultConfig = !!(
     process.env.VAULT_URL &&
@@ -19,7 +17,6 @@ export const isVaultAvailable = (): boolean => {
 
   const isGitHubActions = !!process.env.GITHUB_ACTIONS;
 
-  // Only run vault tests if Vault is configured and not in CI
   return hasVaultConfig && !isGitHubActions;
 };
 
@@ -34,7 +31,6 @@ export const isLocalDevelopment = (): boolean => {
   );
 };
 
-// Load JWT token from environment
 export const TEST_VALID_JWT = process.env.JWT_TOKEN || '';
 export const TEST_INVALID_JWT = 'invalid.jwt.token';
 export const TEST_EXPIRED_JWT =
@@ -71,15 +67,14 @@ export class TestApp {
   private app: INestApplication;
   private module: TestingModule;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async init(configOverride?: Record<string, any>) {
     const moduleBuilder = Test.createTestingModule({
       imports: [AppModule],
     });
 
-    // Create a mock ConfigService that properly handles the overrides
     const mockConfigService = {
       get: jest.fn((key: string) => {
-        // Handle signer configuration
         if (key === 'signer.mode') {
           return (
             configOverride?.signerMode ||
@@ -91,7 +86,6 @@ export class TestApp {
           if (configOverride?.privateKeys) {
             return configOverride.privateKeys;
           }
-          // Try to parse from environment
           try {
             return JSON.parse(
               process.env.PRIVATE_KEYS || '[]',
@@ -136,7 +130,6 @@ export class TestApp {
           );
         }
 
-        // Handle Authentik configuration
         if (key === 'authentik.jwksUri') {
           return (
             configOverride?.authentikJwksUri ||
@@ -159,14 +152,12 @@ export class TestApp {
           );
         }
         if (key === 'authentik.upstreamIdp') {
-          // If upstreamIdp is explicitly set to undefined, return undefined
           if (
             configOverride &&
             'upstreamIdp' in configOverride
           ) {
             return configOverride.upstreamIdp;
           }
-          // Otherwise use environment variable or default
           return (
             process.env.UPSTREAM_IDP || 'VM3 Partner Source'
           );
@@ -214,6 +205,7 @@ export class TestApp {
 }
 
 export const createTestApp = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   configOverride?: Record<string, any>,
 ) => {
   const testApp = new TestApp();

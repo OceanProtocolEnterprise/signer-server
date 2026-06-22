@@ -1,9 +1,7 @@
 import {
   TestApp,
   createTestApp,
-  generateValidHeaders,
   generateInvalidHeaders,
-  generateHeadersWithToken,
   TEST_VALID_JWT,
   TEST_EXPIRED_JWT,
   skipIfNoValidToken,
@@ -13,7 +11,6 @@ describe('Authentication E2E Tests', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {
-    // Create test app with local signer mode for auth tests
     testApp = await createTestApp({
       signerMode: 'local',
       privateKeys: [
@@ -158,7 +155,6 @@ describe('Authentication E2E Tests', () => {
     it('should validate upstream_idp claim and return 403 if mismatch', async () => {
       if (skipIfNoValidToken()) return;
 
-      // Create a test app with a different upstream IDP to test mismatch
       const testAppWithDiffUpstream = await createTestApp({
         signerMode: 'local',
         privateKeys: [
@@ -193,7 +189,6 @@ describe('Authentication E2E Tests', () => {
     it('should accept valid JWT token with correct claims', async () => {
       if (skipIfNoValidToken()) return;
 
-      // Create a test app with matching upstream IDP
       const testAppWithMatchingUpstream =
         await createTestApp({
           signerMode: 'local',
@@ -235,7 +230,6 @@ describe('Authentication E2E Tests', () => {
     it('should handle missing UPSTREAM_IDP configuration', async () => {
       if (skipIfNoValidToken()) return;
 
-      // Create a test app with upstreamIdp explicitly set to undefined
       const testAppWithNoUpstream = await createTestApp({
         signerMode: 'local',
         privateKeys: [
@@ -257,7 +251,6 @@ describe('Authentication E2E Tests', () => {
           .get('/address')
           .set('Authorization', `Bearer ${TEST_VALID_JWT}`);
 
-        // The app should return 403 Forbidden when UPSTREAM_IDP is not configured
         expect(response.status).toBe(403);
         expect(response.body).toMatchObject({
           statusCode: 403,
@@ -269,7 +262,6 @@ describe('Authentication E2E Tests', () => {
     });
 
     it('should handle missing upstream_idp claim in token', async () => {
-      // This test uses an invalid token
       const tokenWithoutUpstream =
         'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIifQ.signature';
 
