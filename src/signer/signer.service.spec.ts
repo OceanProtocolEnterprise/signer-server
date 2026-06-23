@@ -8,6 +8,7 @@ import { SignerFactory } from './signer.factory';
 
 const mockWait = jest.fn().mockResolvedValue({
   blockNumber: 123,
+  blockHash: '0xblock',
   gasUsed: 21000n,
   status: 1,
 });
@@ -228,6 +229,9 @@ describe('SignerService', () => {
       from: '0xMockAddress1',
       to: '0xto',
       nonce: 1,
+      blockNumber: 123,
+      blockHash: '0xblock',
+      status: 1,
     });
     expect(
       mockWallets.get(`0x${'1'.repeat(64)}`)!.connect,
@@ -249,6 +253,7 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
     });
+    expect(mockWait).toHaveBeenCalledWith(1, 180000);
   });
 
   it('rejects transaction when wallet cannot cover value and gas', async () => {
@@ -316,7 +321,24 @@ describe('SignerService', () => {
       'EIP-1559 transaction failed; falling back to legacy transaction',
       type2Error.stack,
     );
-    expect(mockWait).not.toHaveBeenCalled();
+    expect(mockWait).toHaveBeenCalledWith(1, 180000);
+  });
+
+  it('does not fall back to a second transaction when receipt wait fails after broadcast', async () => {
+    mockWait.mockRejectedValueOnce(
+      new Error('receipt wait timed out'),
+    );
+
+    await expect(
+      service.sendTransaction(
+        11155111,
+        '0xto',
+        '100',
+        '0xdata',
+      ),
+    ).rejects.toThrow('receipt wait timed out');
+
+    expect(mockSendTransaction).toHaveBeenCalledTimes(1);
   });
 
   it('should send transaction with selected wallet', async () => {

@@ -22,6 +22,8 @@ import {
 
 @Injectable()
 export class SignerService implements OnModuleInit {
+  private static readonly transactionWaitTimeoutMs = 180_000;
+
   private nodeUriMap: Record<string, string>;
   private providers = new Map<
     number,
@@ -169,19 +171,38 @@ export class SignerService implements OnModuleInit {
     }
   }
 
-  private async sendAndReturn(
+  private async send(
     signer: ethers.AbstractSigner,
     provider: ethers.JsonRpcProvider,
     txRequest: ethers.TransactionRequest,
-  ): Promise<SendTransactionResult> {
-    const tx = await signer
+  ): Promise<ethers.TransactionResponse> {
+    return signer
       .connect(provider)
       .sendTransaction(txRequest);
+  }
+
+  private async waitAndReturn(
+    tx: ethers.TransactionResponse,
+  ): Promise<SendTransactionResult> {
+    const receipt = await tx.wait(
+      1,
+      SignerService.transactionWaitTimeoutMs,
+    );
+
+    if (!receipt) {
+      throw new Error(
+        `Transaction ${tx.hash} was sent but no receipt was returned before timeout`,
+      );
+    }
+
     return {
       hash: tx.hash,
       from: tx.from,
       to: tx.to, // ethers TransactionResponse.to can be null, but we know it's not for our call
       nonce: tx.nonce,
+      blockNumber: receipt.blockNumber,
+      blockHash: receipt.blockHash,
+      status: receipt.status,
     };
   }
 
@@ -300,8 +321,9 @@ export class SignerService implements OnModuleInit {
       eip1559Transaction.maxPriorityFeePerGas =
         feeData.maxPriorityFeePerGas;
     }
+    let tx: ethers.TransactionResponse;
     try {
-      return await this.sendAndReturn(
+      tx = await this.send(
         signer.signer,
         provider,
         eip1559Transaction,
@@ -326,12 +348,14 @@ export class SignerService implements OnModuleInit {
         legacyTransaction.gasPrice = gasPrice;
       }
 
-      return this.sendAndReturn(
+      tx = await this.send(
         signer.signer,
         provider,
         legacyTransaction,
       );
     }
+
+    return this.waitAndReturn(tx);
   }
 
   async getTransaction(
