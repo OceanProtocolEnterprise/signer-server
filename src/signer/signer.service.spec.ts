@@ -331,6 +331,8 @@ describe('SignerService', () => {
       to: '0xto',
       value: 100n,
       data: '0xdata',
+      type: 0,
+      gasLimit: 25200n,
       gasPrice: 4n,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
@@ -340,9 +342,14 @@ describe('SignerService', () => {
     expect(mockWait).toHaveBeenCalledWith(1, 180000);
   });
 
-  it('does not fall back to a second transaction when receipt wait fails after broadcast', async () => {
+  it('returns the transaction when receipt wait times out after broadcast', async () => {
+    const loggerWarnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation();
     mockWait.mockRejectedValueOnce(
-      new Error('receipt wait timed out'),
+      Object.assign(new Error('receipt wait timed out'), {
+        code: 'TIMEOUT',
+      }),
     );
 
     await expect(
@@ -352,9 +359,59 @@ describe('SignerService', () => {
         '100',
         '0xdata',
       ),
-    ).rejects.toThrow('receipt wait timed out');
+    ).resolves.toEqual({
+      hash: '0xtxhash',
+      from: '0xMockAddress1',
+      to: '0xto',
+      nonce: 1,
+    });
 
     expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'Transaction receipt wait timed out; returning pending transaction: {"hash":"0xtxhash","from":"0xMockAddress1","to":"0xto","nonce":1}',
+    );
+  });
+
+  it('does not fall back to a second transaction when receipt wait fails for a non-timeout error', async () => {
+    mockWait.mockRejectedValueOnce(
+      new Error('receipt wait failed'),
+    );
+
+    await expect(
+      service.sendTransaction(
+        11155111,
+        '0xto',
+        '100',
+        '0xdata',
+      ),
+    ).rejects.toThrow('receipt wait failed');
+
+    expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the transaction when no receipt is available after broadcast', async () => {
+    const loggerWarnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation();
+    mockWait.mockResolvedValueOnce(null);
+
+    await expect(
+      service.sendTransaction(
+        11155111,
+        '0xto',
+        '100',
+        '0xdata',
+      ),
+    ).resolves.toEqual({
+      hash: '0xtxhash',
+      from: '0xMockAddress1',
+      to: '0xto',
+      nonce: 1,
+    });
+
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'Transaction receipt was not available; returning pending transaction: {"hash":"0xtxhash","from":"0xMockAddress1","to":"0xto","nonce":1}',
+    );
   });
 
   it('should send transaction with selected wallet', async () => {

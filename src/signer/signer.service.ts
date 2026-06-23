@@ -24,6 +24,7 @@ import {
 export class SignerService implements OnModuleInit {
   private static readonly transactionWaitTimeoutMs = 180_000;
   private static readonly defaultFeeBumpPercent = 200;
+  private static readonly defaultGasLimitBumpPercent = 120;
 
   private nodeUriMap: Record<string, string>;
   private providers = new Map<
@@ -142,7 +143,7 @@ export class SignerService implements OnModuleInit {
     value: bigint,
     data: string,
     maxGasCost?: bigint,
-  ) {
+  ): Promise<bigint> {
     const [balance, feeData, gasEstimate] =
       await Promise.all([
         provider.getBalance(from),
@@ -158,18 +159,25 @@ export class SignerService implements OnModuleInit {
       maxGasCost ??
       feeData.gasPrice ??
       feeData.maxFeePerGas;
+    const gasLimit =
+      (gasEstimate *
+        BigInt(SignerService.defaultGasLimitBumpPercent) +
+        99n) /
+      100n;
 
     if (!gasPrice) {
-      return;
+      return gasLimit;
     }
 
-    const required = value + gasEstimate * gasPrice;
+    const required = value + gasLimit * gasPrice;
 
     if (balance < required) {
       throw new BadRequestException(
         `Insufficient funds for transaction: wallet ${from} on chain ID ${chainId} has ${balance.toString()} wei, needs at least ${required.toString()} wei`,
       );
     }
+
+    return gasLimit;
   }
 
   private async send(
@@ -212,6 +220,15 @@ export class SignerService implements OnModuleInit {
     };
   }
 
+  private isTransactionWaitTimeout(error: unknown) {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'TIMEOUT'
+    );
+  }
+
   private async waitAndReturn(
     tx: ethers.TransactionResponse,
   ): Promise<SendTransactionResult> {
@@ -226,23 +243,42 @@ export class SignerService implements OnModuleInit {
       )}`,
     );
 
-    const receipt = await tx.wait(
-      1,
-      SignerService.transactionWaitTimeoutMs,
-    );
-
-    if (!receipt) {
-      throw new Error(
-        `Transaction ${tx.hash} was sent but no receipt was returned before timeout`,
-      );
-    }
-
     const result = {
       hash: tx.hash,
       from: tx.from,
       to: tx.to, // ethers TransactionResponse.to can be null, but we know it's not for our call
       nonce: tx.nonce,
     };
+
+    let receipt: ethers.TransactionReceipt | null;
+    try {
+      receipt = await tx.wait(
+        1,
+        SignerService.transactionWaitTimeoutMs,
+      );
+    } catch (error) {
+      if (!this.isTransactionWaitTimeout(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        `Transaction receipt wait timed out; returning pending transaction: ${JSON.stringify(
+          result,
+        )}`,
+      );
+
+      return result;
+    }
+
+    if (!receipt) {
+      this.logger.warn(
+        `Transaction receipt was not available; returning pending transaction: ${JSON.stringify(
+          result,
+        )}`,
+      );
+
+      return result;
+    }
 
     this.logger.log(
       `Transaction confirmed; returning response: ${JSON.stringify(
@@ -347,7 +383,7 @@ export class SignerService implements OnModuleInit {
       feeBumpPercent,
     );
 
-    await this.assertSufficientFunds(
+    const gasLimit = await this.assertSufficientFunds(
       provider,
       chainId,
       signer.address,
@@ -395,6 +431,8 @@ export class SignerService implements OnModuleInit {
         to,
         value: txValue,
         data,
+        type: 0,
+        gasLimit,
       };
 
       if (gasPrice != null) {
