@@ -23,7 +23,7 @@ import {
 @Injectable()
 export class SignerService implements OnModuleInit {
   private static readonly transactionWaitTimeoutMs = 180_000;
-  private static readonly defaultFeeBumpPercent = 200;
+  private static readonly defaultFeeBumpPercent = 300;
   private static readonly defaultGasLimitBumpPercent = 120;
 
   private nodeUriMap: Record<string, string>;
@@ -220,6 +220,14 @@ export class SignerService implements OnModuleInit {
     };
   }
 
+  private getFeeBumpPercent() {
+    return (
+      this.configService.get<number>(
+        'signer.feeBumpPercent',
+      ) ?? SignerService.defaultFeeBumpPercent
+    );
+  }
+
   private stringifyForLog(value: unknown) {
     return JSON.stringify(value, (_key, propertyValue) =>
       typeof propertyValue === 'bigint'
@@ -380,7 +388,6 @@ export class SignerService implements OnModuleInit {
     value: string = '0',
     data: string = '0x',
     walletId?: number,
-    feeBumpPercent: number = SignerService.defaultFeeBumpPercent,
   ): Promise<SendTransactionResult> {
     const signer = await this.getSigner(walletId);
     const provider = this.getProvider(chainId);
@@ -391,7 +398,7 @@ export class SignerService implements OnModuleInit {
     );
     const bumpedFeeData = this.getBumpedFeeData(
       feeData,
-      feeBumpPercent,
+      this.getFeeBumpPercent(),
     );
     this.logger.log(
       `bumpedFeeData: ${this.stringifyForLog(bumpedFeeData)}`,

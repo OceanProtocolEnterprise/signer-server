@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { validate } from './validation';
 
 describe('config validation', () => {
@@ -35,5 +36,23 @@ describe('config validation', () => {
         SIGNER_MODE: 'remote',
       }),
     ).toThrow('SIGNER_MODE must be either local or vault');
+  });
+
+  it('accepts signer fee bump percentage', () => {
+    expect(() =>
+      validate({
+        ...validBaseConfig,
+        SIGNER_FEE_BUMP_PERCENT: '300',
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects signer fee bump percentage below 100', () => {
+    expect(() =>
+      validate({
+        ...validBaseConfig,
+        SIGNER_FEE_BUMP_PERCENT: '99',
+      }),
+    ).toThrow();
   });
 });

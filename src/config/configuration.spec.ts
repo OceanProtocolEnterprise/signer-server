@@ -67,6 +67,23 @@ describe('configuration', () => {
     );
   });
 
+  it('uses the default signer fee bump percentage', () => {
+    process.env.SIGNER_MODE = 'vault';
+
+    expect(configuration().signer.feeBumpPercent).toBe(
+      300,
+    );
+  });
+
+  it('parses signer fee bump percentage', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.SIGNER_FEE_BUMP_PERCENT = '250';
+
+    expect(configuration().signer.feeBumpPercent).toBe(
+      250,
+    );
+  });
+
   it('rejects missing signer mode', () => {
     delete process.env.SIGNER_MODE;
 
@@ -97,6 +114,15 @@ describe('configuration', () => {
 
     expect(() => configuration()).toThrow(
       'VAULT_TIMEOUT_MS must be a positive integer',
+    );
+  });
+
+  it('rejects invalid signer fee bump percentage', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.SIGNER_FEE_BUMP_PERCENT = '99';
+
+    expect(() => configuration()).toThrow(
+      'SIGNER_FEE_BUMP_PERCENT must be an integer greater than or equal to 100',
     );
   });
 

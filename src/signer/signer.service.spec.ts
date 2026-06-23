@@ -237,8 +237,8 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 6n,
-      maxPriorityFeePerGas: 2n,
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 3n,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
       '0xMockAddress1',
@@ -270,14 +270,21 @@ describe('SignerService', () => {
     expect(mockSendTransaction).not.toHaveBeenCalled();
   });
 
-  it('uses requested transaction fee bump percentage', async () => {
+  it('uses configured transaction fee bump percentage', async () => {
+    (
+      service as unknown as {
+        configService: ConfigService;
+      }
+    ).configService.get = jest.fn((key: string) => {
+      if (key === 'signer.feeBumpPercent') return 200;
+      return undefined;
+    });
+
     await service.sendTransaction(
       11155111,
       '0xto',
       '100',
       '0xdata',
-      undefined,
-      200,
     );
 
     expect(mockSendTransaction).toHaveBeenCalledWith({
@@ -306,7 +313,7 @@ describe('SignerService', () => {
       'feeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
     );
     expect(loggerLogSpy).toHaveBeenCalledWith(
-      'bumpedFeeData: {"gasPrice":"2","maxFeePerGas":"6","maxPriorityFeePerGas":"2"}',
+      'bumpedFeeData: {"gasPrice":"3","maxFeePerGas":"9","maxPriorityFeePerGas":"3"}',
     );
   });
 
@@ -344,8 +351,8 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 20n,
-      maxPriorityFeePerGas: 2n,
+      maxFeePerGas: 30n,
+      maxPriorityFeePerGas: 3n,
     });
     expect(mockSendTransaction).toHaveBeenNthCalledWith(2, {
       to: '0xto',
@@ -353,7 +360,7 @@ describe('SignerService', () => {
       data: '0xdata',
       type: 0,
       gasLimit: 25200n,
-      gasPrice: 4n,
+      gasPrice: 6n,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
       'EIP-1559 transaction failed; falling back to legacy transaction',

@@ -56,6 +56,25 @@ function parseVaultTimeoutMs(): number {
   return timeoutMs;
 }
 
+function parseSignerFeeBumpPercent(): number {
+  const value = process.env.SIGNER_FEE_BUMP_PERCENT;
+  if (!value) {
+    return 300;
+  }
+
+  const feeBumpPercent = Number(value);
+  if (
+    !Number.isInteger(feeBumpPercent) ||
+    feeBumpPercent < 100
+  ) {
+    throw new Error(
+      'SIGNER_FEE_BUMP_PERCENT must be an integer greater than or equal to 100',
+    );
+  }
+
+  return feeBumpPercent;
+}
+
 function parsePrivateKeys(): PrivateKeyConfig[] {
   const value = process.env.PRIVATE_KEYS;
   if (!value) {
@@ -124,6 +143,7 @@ export default () => {
       privateKeys:
         signerMode === 'local' ? parsePrivateKeys() : [],
       nodeUriMap: parseNodeUriMap(),
+      feeBumpPercent: parseSignerFeeBumpPercent(),
       openBao: {
         url: process.env.VAULT_URL,
         token: process.env.VAULT_TOKEN,

@@ -81,6 +81,7 @@ PRIVATE_KEYS=[{"id":1,"key":"0x..."}]
 NODE_URI_MAP={
   "11155111":"https://ethereum-sepolia.publicnode.com"
 }
+SIGNER_FEE_BUMP_PERCENT=300
 
 AUTHENTIK_JWKS_URI=https://example.com/jwks/
 AUTHENTIK_ISSUER=https://example.com/
