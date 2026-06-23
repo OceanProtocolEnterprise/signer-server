@@ -290,6 +290,26 @@ describe('SignerService', () => {
     });
   });
 
+  it('logs fee data without throwing on bigint values', async () => {
+    const loggerLogSpy = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation();
+
+    await service.sendTransaction(
+      11155111,
+      '0xto',
+      '100',
+      '0xdata',
+    );
+
+    expect(loggerLogSpy).toHaveBeenCalledWith(
+      'feeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
+    );
+    expect(loggerLogSpy).toHaveBeenCalledWith(
+      'bumpedFeeData: {"gasPrice":"2","maxFeePerGas":"6","maxPriorityFeePerGas":"2"}',
+    );
+  });
+
   it('falls back to a legacy transaction when type 2 fails', async () => {
     const loggerLogSpy = jest
       .spyOn(Logger.prototype, 'log')

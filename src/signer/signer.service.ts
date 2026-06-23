@@ -220,6 +220,14 @@ export class SignerService implements OnModuleInit {
     };
   }
 
+  private stringifyForLog(value: unknown) {
+    return JSON.stringify(value, (_key, propertyValue) =>
+      typeof propertyValue === 'bigint'
+        ? propertyValue.toString()
+        : propertyValue,
+    );
+  }
+
   private isTransactionWaitTimeout(error: unknown) {
     return (
       typeof error === 'object' &&
@@ -378,13 +386,15 @@ export class SignerService implements OnModuleInit {
     const provider = this.getProvider(chainId);
     const txValue = BigInt(value);
     const feeData = await provider.getFeeData();
-    this.logger.log(`feeData: ${JSON.stringify(feeData)}`);
+    this.logger.log(
+      `feeData: ${this.stringifyForLog(feeData)}`,
+    );
     const bumpedFeeData = this.getBumpedFeeData(
       feeData,
       feeBumpPercent,
     );
     this.logger.log(
-      `bumpedFeeData: ${JSON.stringify(bumpedFeeData)}`,
+      `bumpedFeeData: ${this.stringifyForLog(bumpedFeeData)}`,
     );
 
     const gasLimit = await this.assertSufficientFunds(
