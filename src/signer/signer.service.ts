@@ -23,7 +23,7 @@ import {
 @Injectable()
 export class SignerService implements OnModuleInit {
   private static readonly transactionWaitTimeoutMs = 180_000;
-  private static readonly defaultFeeBumpPercent = 150;
+  private static readonly defaultFeeBumpPercent = 200;
 
   private nodeUriMap: Record<string, string>;
   private providers = new Map<

@@ -237,7 +237,7 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 5n,
+      maxFeePerGas: 6n,
       maxPriorityFeePerGas: 2n,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
@@ -324,14 +324,14 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 15n,
+      maxFeePerGas: 20n,
       maxPriorityFeePerGas: 2n,
     });
     expect(mockSendTransaction).toHaveBeenNthCalledWith(2, {
       to: '0xto',
       value: 100n,
       data: '0xdata',
-      gasPrice: 3n,
+      gasPrice: 4n,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
       'EIP-1559 transaction failed; falling back to legacy transaction',
