@@ -1331,20 +1331,6 @@ describeIfVault(
         expect(address).toMatch(/^0x[a-fA-F0-9]{40}$/);
       });
 
-      it('should handle Vaults KV store path configuration', async () => {
-        // This test verifies that the Vault signer uses the correct KV store path
-        const response = await testApp
-          .request()
-          .get('/address')
-          .set(validHeaders)
-          .expect(200);
-
-        expect(response.body).toHaveProperty('address');
-        expect(response.body.address).toMatch(
-          /^0x[a-fA-F0-9]{40}$/,
-        );
-      });
-
       it('should support EIP-1559 transactions with Vault', async () => {
         const { Datatoken, ConfigHelper } =
           await import('@oceanprotocol/lib');
