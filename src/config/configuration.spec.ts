@@ -70,18 +70,14 @@ describe('configuration', () => {
   it('uses the default signer fee bump percentage', () => {
     process.env.SIGNER_MODE = 'vault';
 
-    expect(configuration().signer.feeBumpPercent).toBe(
-      300,
-    );
+    expect(configuration().signer.feeBumpPercent).toBe(300);
   });
 
   it('parses signer fee bump percentage', () => {
     process.env.SIGNER_MODE = 'vault';
     process.env.SIGNER_FEE_BUMP_PERCENT = '250';
 
-    expect(configuration().signer.feeBumpPercent).toBe(
-      250,
-    );
+    expect(configuration().signer.feeBumpPercent).toBe(250);
   });
 
   it('rejects missing signer mode', () => {
