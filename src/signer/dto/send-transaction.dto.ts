@@ -39,4 +39,16 @@ export class SendTransactionDto {
   @IsString()
   @IsOptional()
   data?: string = '0x';
+
+  @ApiProperty({
+    description:
+      'Optional fee multiplier percentage applied to RPC fee suggestions before signing. 150 means 150%.',
+    required: false,
+    default: 150,
+  })
+  @Type(() => Number)
+  @IsInt()
+  @Min(100)
+  @IsOptional()
+  feeBumpPercent?: number = 150;
 }

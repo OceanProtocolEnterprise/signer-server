@@ -237,8 +237,8 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 3n,
-      maxPriorityFeePerGas: 1n,
+      maxFeePerGas: 5n,
+      maxPriorityFeePerGas: 2n,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
       '0xMockAddress1',
@@ -268,6 +268,26 @@ describe('SignerService', () => {
       ),
     ).rejects.toThrow('Insufficient funds for transaction');
     expect(mockSendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('uses requested transaction fee bump percentage', async () => {
+    await service.sendTransaction(
+      11155111,
+      '0xto',
+      '100',
+      '0xdata',
+      undefined,
+      200,
+    );
+
+    expect(mockSendTransaction).toHaveBeenCalledWith({
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
+      type: 2,
+      maxFeePerGas: 6n,
+      maxPriorityFeePerGas: 2n,
+    });
   });
 
   it('falls back to a legacy transaction when type 2 fails', async () => {
@@ -304,14 +324,14 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 10n,
-      maxPriorityFeePerGas: 1n,
+      maxFeePerGas: 15n,
+      maxPriorityFeePerGas: 2n,
     });
     expect(mockSendTransaction).toHaveBeenNthCalledWith(2, {
       to: '0xto',
       value: 100n,
       data: '0xdata',
-      gasPrice: 2n,
+      gasPrice: 3n,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
       'EIP-1559 transaction failed; falling back to legacy transaction',

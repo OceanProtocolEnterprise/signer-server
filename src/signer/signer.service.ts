@@ -23,6 +23,7 @@ import {
 @Injectable()
 export class SignerService implements OnModuleInit {
   private static readonly transactionWaitTimeoutMs = 180_000;
+  private static readonly defaultFeeBumpPercent = 150;
 
   private nodeUriMap: Record<string, string>;
   private providers = new Map<
@@ -181,6 +182,36 @@ export class SignerService implements OnModuleInit {
       .sendTransaction(txRequest);
   }
 
+  private bumpFee(
+    value: bigint | null | undefined,
+    feeBumpPercent: number,
+  ) {
+    if (value == null) return undefined;
+
+    const multiplier = BigInt(feeBumpPercent);
+    return (value * multiplier + 99n) / 100n;
+  }
+
+  private getBumpedFeeData(
+    feeData: ethers.FeeData,
+    feeBumpPercent: number,
+  ) {
+    return {
+      gasPrice: this.bumpFee(
+        feeData.gasPrice,
+        feeBumpPercent,
+      ),
+      maxFeePerGas: this.bumpFee(
+        feeData.maxFeePerGas,
+        feeBumpPercent,
+      ),
+      maxPriorityFeePerGas: this.bumpFee(
+        feeData.maxPriorityFeePerGas,
+        feeBumpPercent,
+      ),
+    };
+  }
+
   private async waitAndReturn(
     tx: ethers.TransactionResponse,
   ): Promise<SendTransactionResult> {
@@ -305,11 +336,16 @@ export class SignerService implements OnModuleInit {
     value: string = '0',
     data: string = '0x',
     walletId?: number,
+    feeBumpPercent: number = SignerService.defaultFeeBumpPercent,
   ): Promise<SendTransactionResult> {
     const signer = await this.getSigner(walletId);
     const provider = this.getProvider(chainId);
     const txValue = BigInt(value);
     const feeData = await provider.getFeeData();
+    const bumpedFeeData = this.getBumpedFeeData(
+      feeData,
+      feeBumpPercent,
+    );
 
     await this.assertSufficientFunds(
       provider,
@@ -318,7 +354,7 @@ export class SignerService implements OnModuleInit {
       to,
       txValue,
       data,
-      feeData.maxFeePerGas ?? undefined,
+      bumpedFeeData.maxFeePerGas ?? bumpedFeeData.gasPrice,
     );
 
     const eip1559Transaction: ethers.TransactionRequest = {
@@ -328,14 +364,14 @@ export class SignerService implements OnModuleInit {
       type: 2,
     };
 
-    if (feeData.maxFeePerGas != null) {
+    if (bumpedFeeData.maxFeePerGas != null) {
       eip1559Transaction.maxFeePerGas =
-        feeData.maxFeePerGas;
+        bumpedFeeData.maxFeePerGas;
     }
 
-    if (feeData.maxPriorityFeePerGas != null) {
+    if (bumpedFeeData.maxPriorityFeePerGas != null) {
       eip1559Transaction.maxPriorityFeePerGas =
-        feeData.maxPriorityFeePerGas;
+        bumpedFeeData.maxPriorityFeePerGas;
     }
     let tx: ethers.TransactionResponse;
     try {
@@ -353,7 +389,8 @@ export class SignerService implements OnModuleInit {
       );
 
       const gasPrice =
-        feeData.gasPrice ?? feeData.maxFeePerGas;
+        bumpedFeeData.gasPrice ??
+        bumpedFeeData.maxFeePerGas;
       const legacyTransaction: ethers.TransactionRequest = {
         to,
         value: txValue,

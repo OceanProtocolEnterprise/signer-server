@@ -119,6 +119,7 @@ describe('SignerController', () => {
           to: '0x0000000000000000000000000000000000000001',
           value: '0',
           data: '0x',
+          feeBumpPercent: 200,
         },
         reqWithWalletId(7),
       ),
@@ -136,6 +137,7 @@ describe('SignerController', () => {
       '0',
       '0x',
       7,
+      200,
     );
   });
 

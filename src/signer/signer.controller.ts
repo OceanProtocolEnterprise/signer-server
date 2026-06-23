@@ -146,6 +146,7 @@ export class SignerController {
       dto.value,
       dto.data,
       walletId,
+      dto.feeBumpPercent,
     );
     return result;
   }
