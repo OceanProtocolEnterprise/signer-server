@@ -378,9 +378,13 @@ export class SignerService implements OnModuleInit {
     const provider = this.getProvider(chainId);
     const txValue = BigInt(value);
     const feeData = await provider.getFeeData();
+    this.logger.log(`feeData: ${JSON.stringify(feeData)}`);
     const bumpedFeeData = this.getBumpedFeeData(
       feeData,
       feeBumpPercent,
+    );
+    this.logger.log(
+      `bumpedFeeData: ${JSON.stringify(bumpedFeeData)}`,
     );
 
     const gasLimit = await this.assertSufficientFunds(
