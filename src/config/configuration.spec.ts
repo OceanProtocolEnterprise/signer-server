@@ -67,17 +67,40 @@ describe('configuration', () => {
     );
   });
 
-  it('uses the default signer fee bump percentage', () => {
+  it('parses node URI config and fee bump percentage by chain', () => {
     process.env.SIGNER_MODE = 'vault';
+    process.env.NODE_URI_MAP =
+      '[{"11155111":{"key":"https://eth-sepolia.test","multiplier":3}},{"11155420":{"key":"https://op-sepolia.test","multiplier":2}},{"10":{"key":"https://op-mainnet.test","multiplier":1.5}},{"1":{"key":"https://eth-mainnet.test","multiplier":2}}]';
 
-    expect(configuration().signer.feeBumpPercent).toBe(300);
+    expect(configuration().signer.nodeUriMap).toEqual({
+      '11155111': 'https://eth-sepolia.test',
+      '11155420': 'https://op-sepolia.test',
+      '10': 'https://op-mainnet.test',
+      '1': 'https://eth-mainnet.test',
+    });
+    expect(
+      configuration().signer.feeBumpPercentByChain,
+    ).toEqual({
+      '11155111': 300,
+      '11155420': 200,
+      '10': 150,
+      '1': 200,
+    });
   });
 
-  it('parses signer fee bump percentage', () => {
+  it('uses default gas multipliers when node URI multiplier is omitted', () => {
     process.env.SIGNER_MODE = 'vault';
-    process.env.SIGNER_FEE_BUMP_PERCENT = '250';
+    process.env.NODE_URI_MAP =
+      '[{"11155111":{"key":"https://eth-sepolia.test"}},{"11155420":{"key":"https://op-sepolia.test"}},{"10":{"key":"https://op-mainnet.test"}},{"1":{"key":"https://eth-mainnet.test"}}]';
 
-    expect(configuration().signer.feeBumpPercent).toBe(250);
+    expect(
+      configuration().signer.feeBumpPercentByChain,
+    ).toEqual({
+      '11155111': 300,
+      '11155420': 200,
+      '10': 150,
+      '1': 200,
+    });
   });
 
   it('rejects missing signer mode', () => {
@@ -113,12 +136,33 @@ describe('configuration', () => {
     );
   });
 
-  it('rejects invalid signer fee bump percentage', () => {
+  it('rejects invalid node URI multiplier', () => {
     process.env.SIGNER_MODE = 'vault';
-    process.env.SIGNER_FEE_BUMP_PERCENT = '99';
+    process.env.NODE_URI_MAP =
+      '[{"11155111":{"key":"https://eth-sepolia.test","multiplier":0.5}}]';
 
     expect(() => configuration()).toThrow(
-      'SIGNER_FEE_BUMP_PERCENT must be an integer greater than or equal to 100',
+      'NODE_URI_MAP[0][11155111].multiplier must be a number greater than or equal to 1',
+    );
+  });
+
+  it('rejects duplicate node URI chain IDs', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.NODE_URI_MAP =
+      '[{"11155111":{"key":"https://eth-sepolia-1.test","multiplier":3}},{"11155111":{"key":"https://eth-sepolia-2.test","multiplier":3}}]';
+
+    expect(() => configuration()).toThrow(
+      'NODE_URI_MAP contains duplicate chain ID 11155111',
+    );
+  });
+
+  it('rejects non-canonical node URI chain IDs', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.NODE_URI_MAP =
+      '[{"01":{"key":"https://eth-mainnet.test","multiplier":2}}]';
+
+    expect(() => configuration()).toThrow(
+      'NODE_URI_MAP[0] chain ID must be a positive integer string',
     );
   });
 

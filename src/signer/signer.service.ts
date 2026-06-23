@@ -23,7 +23,6 @@ import {
 @Injectable()
 export class SignerService implements OnModuleInit {
   private static readonly transactionWaitTimeoutMs = 180_000;
-  private static readonly defaultFeeBumpPercent = 300;
   private static readonly defaultGasLimitBumpPercent = 120;
 
   private nodeUriMap: Record<string, string>;
@@ -220,12 +219,13 @@ export class SignerService implements OnModuleInit {
     };
   }
 
-  private getFeeBumpPercent() {
-    return (
-      this.configService.get<number>(
-        'signer.feeBumpPercent',
-      ) ?? SignerService.defaultFeeBumpPercent
-    );
+  private getFeeBumpPercent(chainId: number) {
+    const feeBumpPercentByChain =
+      this.configService.get<Record<string, number>>(
+        'signer.feeBumpPercentByChain',
+      ) ?? {};
+
+    return feeBumpPercentByChain[String(chainId)] ?? 100;
   }
 
   private stringifyForLog(value: unknown) {
@@ -398,7 +398,7 @@ export class SignerService implements OnModuleInit {
     );
     const bumpedFeeData = this.getBumpedFeeData(
       feeData,
-      this.getFeeBumpPercent(),
+      this.getFeeBumpPercent(chainId),
     );
     this.logger.log(
       `bumpedFeeData: ${this.stringifyForLog(bumpedFeeData)}`,
