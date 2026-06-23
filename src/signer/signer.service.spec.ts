@@ -8,7 +8,6 @@ import { SignerFactory } from './signer.factory';
 
 const mockWait = jest.fn().mockResolvedValue({
   blockNumber: 123,
-  blockHash: '0xblock',
   gasUsed: 21000n,
   status: 1,
 });
@@ -229,9 +228,6 @@ describe('SignerService', () => {
       from: '0xMockAddress1',
       to: '0xto',
       nonce: 1,
-      blockNumber: 123,
-      blockHash: '0xblock',
-      status: 1,
     });
     expect(
       mockWallets.get(`0x${'1'.repeat(64)}`)!.connect,

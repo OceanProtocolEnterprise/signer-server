@@ -184,6 +184,17 @@ export class SignerService implements OnModuleInit {
   private async waitAndReturn(
     tx: ethers.TransactionResponse,
   ): Promise<SendTransactionResult> {
+    this.logger.log(
+      `Transaction sent; waiting for receipt: ${JSON.stringify(
+        {
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          nonce: tx.nonce,
+        },
+      )}`,
+    );
+
     const receipt = await tx.wait(
       1,
       SignerService.transactionWaitTimeoutMs,
@@ -195,15 +206,20 @@ export class SignerService implements OnModuleInit {
       );
     }
 
-    return {
+    const result = {
       hash: tx.hash,
       from: tx.from,
       to: tx.to, // ethers TransactionResponse.to can be null, but we know it's not for our call
       nonce: tx.nonce,
-      blockNumber: receipt.blockNumber,
-      blockHash: receipt.blockHash,
-      status: receipt.status,
     };
+
+    this.logger.log(
+      `Transaction confirmed; returning response: ${JSON.stringify(
+        result,
+      )}`,
+    );
+
+    return result;
   }
 
   private async getSigner(

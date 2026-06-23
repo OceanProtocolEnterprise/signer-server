@@ -110,9 +110,6 @@ describe('SignerController', () => {
       from: '0xFrom',
       to: '0xTo',
       nonce: 1,
-      blockNumber: 123,
-      blockHash: '0xBlock',
-      status: 1,
     });
 
     await expect(
@@ -130,9 +127,6 @@ describe('SignerController', () => {
       from: '0xFrom',
       to: '0xTo',
       nonce: 1,
-      blockNumber: 123,
-      blockHash: '0xBlock',
-      status: 1,
     });
     expect(
       signerService.sendTransaction,
