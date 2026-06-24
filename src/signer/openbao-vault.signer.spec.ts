@@ -308,5 +308,4 @@ describe('OpenBaoVaultSigner', () => {
       '0xf801',
     );
   });
-
 });
