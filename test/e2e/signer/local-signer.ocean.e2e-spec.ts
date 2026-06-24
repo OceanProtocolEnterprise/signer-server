@@ -262,10 +262,15 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
           key: LOCAL_TEST_CONFIG.testPrivateKey,
         },
       ],
-      nodeUriMap: {
-        '11155111': rpcUrl,
-        '11155420': 'https://sepolia.optimism.io',
-      },
+      nodeUriMap: [
+        { '11155111': { key: rpcUrl, multiplier: 3 } },
+        {
+          '11155420': {
+            key: 'https://sepolia.optimism.io',
+            multiplier: 2,
+          },
+        },
+      ],
     });
     validHeaders = generateValidHeaders();
 

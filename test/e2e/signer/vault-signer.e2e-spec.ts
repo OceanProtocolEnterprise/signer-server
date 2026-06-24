@@ -39,10 +39,15 @@ describeIfVault('Vault Signer E2E Tests', () => {
         kvStorePath: 'secret',
         timeoutMs: 10000,
       },
-      nodeUriMap: {
-        '11155111': rpcUrl,
-        '11155420': 'https://sepolia.optimism.io',
-      },
+      nodeUriMap: [
+        { '11155111': { key: rpcUrl, multiplier: 3 } },
+        {
+          '11155420': {
+            key: 'https://sepolia.optimism.io',
+            multiplier: 2,
+          },
+        },
+      ],
     });
     validHeaders = generateValidHeaders();
   });
@@ -474,6 +479,7 @@ describeIfVault('Vault Signer E2E Tests', () => {
       });
     });
   });
+
   describe('UPSTREAM_IDP Authorization', () => {
     const createInvalidApp = async () => {
       const rpcUrl =
@@ -492,10 +498,15 @@ describeIfVault('Vault Signer E2E Tests', () => {
           kvStorePath: 'secret',
           timeoutMs: 10000,
         },
-        nodeUriMap: {
-          '11155111': rpcUrl,
-          '11155420': 'https://sepolia.optimism.io',
-        },
+        nodeUriMap: [
+          { '11155111': { key: rpcUrl, multiplier: 3 } },
+          {
+            '11155420': {
+              key: 'https://sepolia.optimism.io',
+              multiplier: 2,
+            },
+          },
+        ],
       });
     };
 

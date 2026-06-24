@@ -280,10 +280,15 @@ describeIfVault(
           kvStorePath: 'secret',
           timeoutMs: 10000,
         },
-        nodeUriMap: {
-          '11155111': rpcUrl,
-          '11155420': 'https://sepolia.optimism.io',
-        },
+        nodeUriMap: [
+          { '11155111': { key: rpcUrl, multiplier: 3 } },
+          {
+            '11155420': {
+              key: 'https://sepolia.optimism.io',
+              multiplier: 2,
+            },
+          },
+        ],
       });
       validHeaders = generateValidHeaders();
 
@@ -1289,10 +1294,15 @@ describeIfVault(
             kvStorePath: 'secret',
             timeoutMs: 10000,
           },
-          nodeUriMap: {
-            '11155111': rpcUrl,
-            '11155420': 'https://sepolia.optimism.io',
-          },
+          nodeUriMap: [
+            { '11155111': { key: rpcUrl, multiplier: 3 } },
+            {
+              '11155420': {
+                key: 'https://sepolia.optimism.io',
+                multiplier: 2,
+              },
+            },
+          ],
         });
 
         try {

@@ -19,10 +19,14 @@ describe('Authentication E2E Tests', () => {
           key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
         },
       ],
-      nodeUriMap: {
-        '11155111':
-          'https://eth-sepolia.g.alchemy.com/v2/test',
-      },
+      nodeUriMap: [
+        {
+          '11155111': {
+            key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+            multiplier: 3,
+          },
+        },
+      ],
     });
   });
 
@@ -163,10 +167,14 @@ describe('Authentication E2E Tests', () => {
             key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
           },
         ],
-        nodeUriMap: {
-          '11155111':
-            'https://eth-sepolia.g.alchemy.com/v2/test',
-        },
+        nodeUriMap: [
+          {
+            '11155111': {
+              key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+              multiplier: 3,
+            },
+          },
+        ],
         upstreamIdp: 'Different-Provider',
       });
 
@@ -198,10 +206,14 @@ describe('Authentication E2E Tests', () => {
               key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
             },
           ],
-          nodeUriMap: {
-            '11155111':
-              'https://eth-sepolia.g.alchemy.com/v2/test',
-          },
+          nodeUriMap: [
+            {
+              '11155111': {
+                key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+                multiplier: 3,
+              },
+            },
+          ],
           upstreamIdp:
             process.env.UPSTREAM_IDP ||
             'VM3 Partner Source',
@@ -238,10 +250,14 @@ describe('Authentication E2E Tests', () => {
             key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
           },
         ],
-        nodeUriMap: {
-          '11155111':
-            'https://eth-sepolia.g.alchemy.com/v2/test',
-        },
+        nodeUriMap: [
+          {
+            '11155111': {
+              key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+              multiplier: 3,
+            },
+          },
+        ],
         upstreamIdp: undefined,
       });
 
@@ -310,10 +326,14 @@ describe('Authentication E2E Tests', () => {
               key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
             },
           ],
-          nodeUriMap: {
-            '11155111':
-              'https://eth-sepolia.g.alchemy.com/v2/test',
-          },
+          nodeUriMap: [
+            {
+              '11155111': {
+                key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+                multiplier: 3,
+              },
+            },
+          ],
           upstreamIdp:
             process.env.UPSTREAM_IDP ||
             'VM3 Partner Source',
@@ -371,10 +391,14 @@ describe('Authentication E2E Tests', () => {
               key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
             },
           ],
-          nodeUriMap: {
-            '11155111':
-              'https://eth-sepolia.g.alchemy.com/v2/test',
-          },
+          nodeUriMap: [
+            {
+              '11155111': {
+                key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+                multiplier: 3,
+              },
+            },
+          ],
           upstreamIdp:
             process.env.UPSTREAM_IDP ||
             'VM3 Partner Source',
@@ -436,10 +460,14 @@ describe('Authentication E2E Tests', () => {
               key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
             },
           ],
-          nodeUriMap: {
-            '11155111':
-              'https://eth-sepolia.g.alchemy.com/v2/test',
-          },
+          nodeUriMap: [
+            {
+              '11155111': {
+                key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+                multiplier: 3,
+              },
+            },
+          ],
           upstreamIdp:
             process.env.UPSTREAM_IDP ||
             'VM3 Partner Source',
@@ -473,10 +501,14 @@ describe('Authentication E2E Tests', () => {
               key: '0x8dbeed3d544e270f7535c23032e7782410f4244aa055885650cf6befad896cfb',
             },
           ],
-          nodeUriMap: {
-            '11155111':
-              'https://eth-sepolia.g.alchemy.com/v2/test',
-          },
+          nodeUriMap: [
+            {
+              '11155111': {
+                key: 'https://eth-sepolia.g.alchemy.com/v2/test',
+                multiplier: 3,
+              },
+            },
+          ],
           upstreamIdp:
             process.env.UPSTREAM_IDP ||
             'VM3 Partner Source',
