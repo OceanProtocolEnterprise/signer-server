@@ -23,6 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ethers } from 'ethers';
 import { Request } from 'express';
 import {
   AddressResponse,
@@ -118,8 +119,11 @@ export class SignerController {
     const signer = await this.signerService.getAddress(
       resolvedWalletId,
     );
+    const message = dto.rawMessage
+      ? ethers.getBytes(dto.rawMessage)
+      : dto.message!;
     const signature = await this.signerService.signMessage(
-      dto.message,
+      message,
       resolvedWalletId,
     );
     return { signature, ...signer };

@@ -193,6 +193,16 @@ describe('SignerService', () => {
     ).toHaveBeenCalledWith('hello');
   });
 
+  it('should sign raw message bytes', async () => {
+    const rawMessage = Uint8Array.from([1, 2, 3]);
+    const signature = await service.signMessage(rawMessage);
+
+    expect(signature).toBe('0xsigned1');
+    expect(
+      mockWallets.get(`0x${'1'.repeat(64)}`)!.signMessage,
+    ).toHaveBeenCalledWith(rawMessage);
+  });
+
   it('should sign a message with selected wallet', async () => {
     const signature = await service.signMessage(
       'hello',
@@ -239,6 +249,7 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
     });
+    expect(mockWait).toHaveBeenCalledWith(1, 180000);
   });
 
   it('rejects transaction when wallet cannot cover value and gas', async () => {
@@ -257,6 +268,86 @@ describe('SignerService', () => {
       ),
     ).rejects.toThrow('Insufficient funds for transaction');
     expect(mockSendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('does not bump transaction fees when config has no percentage for the chain', async () => {
+    (
+      service as unknown as {
+        configService: ConfigService;
+      }
+    ).configService.get = jest.fn((key: string) => {
+      if (key === 'signer.feeBumpPercentByChain') {
+        return {};
+      }
+      return undefined;
+    });
+
+    await service.sendTransaction(
+      11155111,
+      '0xto',
+      '100',
+      '0xdata',
+    );
+
+    expect(mockSendTransaction).toHaveBeenCalledWith({
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
+      type: 2,
+      maxFeePerGas: 3n,
+      maxPriorityFeePerGas: 1n,
+    });
+  });
+
+  it('uses chain-specific transaction fee bump percentage when configured', async () => {
+    (
+      service as unknown as {
+        configService: ConfigService;
+      }
+    ).configService.get = jest.fn((key: string) => {
+      if (key === 'signer.feeBumpPercentByChain') {
+        return {
+          '11155420': 200,
+        };
+      }
+      return undefined;
+    });
+
+    await service.sendTransaction(
+      11155420,
+      '0xto',
+      '100',
+      '0xdata',
+    );
+
+    expect(mockSendTransaction).toHaveBeenCalledWith({
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
+      type: 2,
+      maxFeePerGas: 6n,
+      maxPriorityFeePerGas: 2n,
+    });
+  });
+
+  it('logs fee data without throwing on bigint values', async () => {
+    const loggerLogSpy = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation();
+
+    await service.sendTransaction(
+      11155111,
+      '0xto',
+      '100',
+      '0xdata',
+    );
+
+    expect(loggerLogSpy).toHaveBeenCalledWith(
+      'feeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
+    );
+    expect(loggerLogSpy).toHaveBeenCalledWith(
+      'bumpedFeeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
+    );
   });
 
   it('falls back to a legacy transaction when type 2 fails', async () => {
@@ -300,13 +391,87 @@ describe('SignerService', () => {
       to: '0xto',
       value: 100n,
       data: '0xdata',
+      type: 0,
+      gasLimit: 25200n,
       gasPrice: 2n,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
       'EIP-1559 transaction failed; falling back to legacy transaction',
       type2Error.stack,
     );
-    expect(mockWait).not.toHaveBeenCalled();
+    expect(mockWait).toHaveBeenCalledWith(1, 180000);
+  });
+
+  it('returns the transaction when receipt wait times out after broadcast', async () => {
+    const loggerWarnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation();
+    mockWait.mockRejectedValueOnce(
+      Object.assign(new Error('receipt wait timed out'), {
+        code: 'TIMEOUT',
+      }),
+    );
+
+    await expect(
+      service.sendTransaction(
+        11155111,
+        '0xto',
+        '100',
+        '0xdata',
+      ),
+    ).resolves.toEqual({
+      hash: '0xtxhash',
+      from: '0xMockAddress1',
+      to: '0xto',
+      nonce: 1,
+    });
+
+    expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'Transaction receipt wait timed out; returning pending transaction: {"hash":"0xtxhash","from":"0xMockAddress1","to":"0xto","nonce":1}',
+    );
+  });
+
+  it('does not fall back to a second transaction when receipt wait fails for a non-timeout error', async () => {
+    mockWait.mockRejectedValueOnce(
+      new Error('receipt wait failed'),
+    );
+
+    await expect(
+      service.sendTransaction(
+        11155111,
+        '0xto',
+        '100',
+        '0xdata',
+      ),
+    ).rejects.toThrow('receipt wait failed');
+
+    expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the transaction when no receipt is available after broadcast', async () => {
+    const loggerWarnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation();
+    mockWait.mockResolvedValueOnce(null);
+
+    await expect(
+      service.sendTransaction(
+        11155111,
+        '0xto',
+        '100',
+        '0xdata',
+      ),
+    ).resolves.toEqual({
+      hash: '0xtxhash',
+      from: '0xMockAddress1',
+      to: '0xto',
+      nonce: 1,
+    });
+
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'Transaction receipt was not available; returning pending transaction: {"hash":"0xtxhash","from":"0xMockAddress1","to":"0xto","nonce":1}',
+    );
   });
 
   it('should send transaction with selected wallet', async () => {

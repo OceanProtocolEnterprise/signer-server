@@ -1,19 +1,103 @@
-function parseNodeUriMap(): Record<string, string> {
+import { DEFAULT_GAS_MULTIPLIERS_BY_CHAIN } from './default-gas-multipliers.config';
+
+type NodeUriMapEntry = Record<
+  string,
+  {
+    key: unknown;
+    multiplier?: unknown;
+  }
+>;
+
+type ParsedNodeUriConfig = {
+  nodeUriMap: Record<string, string>;
+  feeBumpPercentByChain: Record<string, number>;
+};
+
+function parseNodeUriMap(): ParsedNodeUriConfig {
   const value = process.env.NODE_URI_MAP;
   if (!value) {
-    return {};
+    return {
+      nodeUriMap: {},
+      feeBumpPercentByChain: {},
+    };
   }
 
-  const parsed = JSON.parse(value) as Record<
-    string,
-    unknown
-  >;
-  return Object.fromEntries(
-    Object.entries(parsed).map(([chainId, nodeUri]) => [
-      chainId,
-      String(nodeUri),
-    ]),
-  );
+  const parsed = JSON.parse(value) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error('NODE_URI_MAP must be a JSON array');
+  }
+
+  const nodeUriMap: Record<string, string> = {};
+  const feeBumpPercentByChain: Record<string, number> = {};
+  const seenChainIds = new Set<string>();
+
+  parsed.forEach((entry, index) => {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(
+        `NODE_URI_MAP[${index}] must be an object`,
+      );
+    }
+
+    const entries = Object.entries(
+      entry as NodeUriMapEntry,
+    );
+    if (entries.length !== 1) {
+      throw new Error(
+        `NODE_URI_MAP[${index}] must contain exactly one chain ID`,
+      );
+    }
+
+    const [chainId, config] = entries[0];
+    if (!/^[1-9]\d*$/.test(chainId)) {
+      throw new Error(
+        `NODE_URI_MAP[${index}] chain ID must be a positive integer string`,
+      );
+    }
+
+    if (seenChainIds.has(chainId)) {
+      throw new Error(
+        `NODE_URI_MAP contains duplicate chain ID ${chainId}`,
+      );
+    }
+    seenChainIds.add(chainId);
+
+    if (!config || typeof config !== 'object') {
+      throw new Error(
+        `NODE_URI_MAP[${index}][${chainId}] must be an object`,
+      );
+    }
+
+    const { key, multiplier } = config;
+    if (typeof key !== 'string' || !key.trim()) {
+      throw new Error(
+        `NODE_URI_MAP[${index}][${chainId}].key must be a non-empty string`,
+      );
+    }
+
+    const feeMultiplier = Number(
+      multiplier ??
+        DEFAULT_GAS_MULTIPLIERS_BY_CHAIN[chainId] ??
+        1,
+    );
+    if (
+      !Number.isFinite(feeMultiplier) ||
+      feeMultiplier < 1
+    ) {
+      throw new Error(
+        `NODE_URI_MAP[${index}][${chainId}].multiplier must be a number greater than or equal to 1`,
+      );
+    }
+
+    nodeUriMap[chainId] = key.trim();
+    feeBumpPercentByChain[chainId] = Math.ceil(
+      feeMultiplier * 100,
+    );
+  });
+
+  return {
+    nodeUriMap,
+    feeBumpPercentByChain,
+  };
 }
 
 type PrivateKeyConfig = {
@@ -117,13 +201,16 @@ function parsePrivateKeys(): PrivateKeyConfig[] {
 
 export default () => {
   const signerMode = parseSignerMode();
+  const parsedNodeUriConfig = parseNodeUriMap();
 
   return {
     signer: {
       mode: signerMode,
       privateKeys:
         signerMode === 'local' ? parsePrivateKeys() : [],
-      nodeUriMap: parseNodeUriMap(),
+      nodeUriMap: parsedNodeUriConfig.nodeUriMap,
+      feeBumpPercentByChain:
+        parsedNodeUriConfig.feeBumpPercentByChain,
       openBao: {
         url: process.env.VAULT_URL,
         token: process.env.VAULT_TOKEN,

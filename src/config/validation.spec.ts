@@ -1,10 +1,12 @@
+import 'reflect-metadata';
 import { validate } from './validation';
 
 describe('config validation', () => {
   const validBaseConfig = {
     SIGNER_MODE: 'local',
     PRIVATE_KEYS: `[{"walletId":1,"key":"0x${'1'.repeat(64)}"}]`,
-    NODE_URI_MAP: '{"11155111":"https://test.rpc"}',
+    NODE_URI_MAP:
+      '[{"11155111":{"key":"https://test.rpc","multiplier":1}}]',
     AUTHENTIK_JWKS_URI: 'https://test/jwks',
     AUTHENTIK_ISSUER: 'https://issuer',
     AUTHENTIK_AUDIENCE: 'client-id',

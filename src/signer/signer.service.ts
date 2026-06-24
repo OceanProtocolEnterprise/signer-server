@@ -22,6 +22,9 @@ import {
 
 @Injectable()
 export class SignerService implements OnModuleInit {
+  private static readonly transactionWaitTimeoutMs = 180_000;
+  private static readonly defaultGasLimitBumpPercent = 120;
+
   private nodeUriMap: Record<string, string>;
   private providers = new Map<
     number,
@@ -139,7 +142,7 @@ export class SignerService implements OnModuleInit {
     value: bigint,
     data: string,
     maxGasCost?: bigint,
-  ) {
+  ): Promise<bigint> {
     const [balance, feeData, gasEstimate] =
       await Promise.all([
         provider.getBalance(from),
@@ -155,34 +158,151 @@ export class SignerService implements OnModuleInit {
       maxGasCost ??
       feeData.gasPrice ??
       feeData.maxFeePerGas;
+    const gasLimit =
+      (gasEstimate *
+        BigInt(SignerService.defaultGasLimitBumpPercent) +
+        99n) /
+      100n;
 
     if (!gasPrice) {
-      return;
+      return gasLimit;
     }
 
-    const required = value + gasEstimate * gasPrice;
+    const required = value + gasLimit * gasPrice;
 
     if (balance < required) {
       throw new BadRequestException(
         `Insufficient funds for transaction: wallet ${from} on chain ID ${chainId} has ${balance.toString()} wei, needs at least ${required.toString()} wei`,
       );
     }
+
+    return gasLimit;
   }
 
-  private async sendAndReturn(
+  private async send(
     signer: ethers.AbstractSigner,
     provider: ethers.JsonRpcProvider,
     txRequest: ethers.TransactionRequest,
-  ): Promise<SendTransactionResult> {
-    const tx = await signer
+  ): Promise<ethers.TransactionResponse> {
+    return signer
       .connect(provider)
       .sendTransaction(txRequest);
+  }
+
+  private bumpFee(
+    value: bigint | null | undefined,
+    feeBumpPercent: number,
+  ) {
+    if (value == null) return undefined;
+
+    const multiplier = BigInt(feeBumpPercent);
+    return (value * multiplier + 99n) / 100n;
+  }
+
+  private getBumpedFeeData(
+    feeData: ethers.FeeData,
+    feeBumpPercent: number,
+  ) {
     return {
+      gasPrice: this.bumpFee(
+        feeData.gasPrice,
+        feeBumpPercent,
+      ),
+      maxFeePerGas: this.bumpFee(
+        feeData.maxFeePerGas,
+        feeBumpPercent,
+      ),
+      maxPriorityFeePerGas: this.bumpFee(
+        feeData.maxPriorityFeePerGas,
+        feeBumpPercent,
+      ),
+    };
+  }
+
+  private getFeeBumpPercent(chainId: number) {
+    const feeBumpPercentByChain =
+      this.configService.get<Record<string, number>>(
+        'signer.feeBumpPercentByChain',
+      ) ?? {};
+
+    return feeBumpPercentByChain[String(chainId)] ?? 100;
+  }
+
+  private stringifyForLog(value: unknown) {
+    return JSON.stringify(value, (_key, propertyValue) =>
+      typeof propertyValue === 'bigint'
+        ? propertyValue.toString()
+        : propertyValue,
+    );
+  }
+
+  private isTransactionWaitTimeout(error: unknown) {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'TIMEOUT'
+    );
+  }
+
+  private async waitAndReturn(
+    tx: ethers.TransactionResponse,
+  ): Promise<SendTransactionResult> {
+    this.logger.log(
+      `Transaction sent; waiting for receipt: ${JSON.stringify(
+        {
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          nonce: tx.nonce,
+        },
+      )}`,
+    );
+
+    const result = {
       hash: tx.hash,
       from: tx.from,
       to: tx.to, // ethers TransactionResponse.to can be null, but we know it's not for our call
       nonce: tx.nonce,
     };
+
+    let receipt: ethers.TransactionReceipt | null;
+    try {
+      receipt = await tx.wait(
+        1,
+        SignerService.transactionWaitTimeoutMs,
+      );
+    } catch (error) {
+      if (!this.isTransactionWaitTimeout(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        `Transaction receipt wait timed out; returning pending transaction: ${JSON.stringify(
+          result,
+        )}`,
+      );
+
+      return result;
+    }
+
+    if (!receipt) {
+      this.logger.warn(
+        `Transaction receipt was not available; returning pending transaction: ${JSON.stringify(
+          result,
+        )}`,
+      );
+
+      return result;
+    }
+
+    this.logger.log(
+      `Transaction confirmed; returning response: ${JSON.stringify(
+        result,
+      )}`,
+    );
+
+    return result;
   }
 
   private async getSigner(
@@ -254,7 +374,7 @@ export class SignerService implements OnModuleInit {
   }
 
   async signMessage(
-    message: string,
+    message: string | Uint8Array,
     walletId?: number,
   ): Promise<string> {
     return (
@@ -273,15 +393,25 @@ export class SignerService implements OnModuleInit {
     const provider = this.getProvider(chainId);
     const txValue = BigInt(value);
     const feeData = await provider.getFeeData();
+    this.logger.log(
+      `feeData: ${this.stringifyForLog(feeData)}`,
+    );
+    const bumpedFeeData = this.getBumpedFeeData(
+      feeData,
+      this.getFeeBumpPercent(chainId),
+    );
+    this.logger.log(
+      `bumpedFeeData: ${this.stringifyForLog(bumpedFeeData)}`,
+    );
 
-    await this.assertSufficientFunds(
+    const gasLimit = await this.assertSufficientFunds(
       provider,
       chainId,
       signer.address,
       to,
       txValue,
       data,
-      feeData.maxFeePerGas ?? undefined,
+      bumpedFeeData.maxFeePerGas ?? bumpedFeeData.gasPrice,
     );
 
     const eip1559Transaction: ethers.TransactionRequest = {
@@ -291,17 +421,18 @@ export class SignerService implements OnModuleInit {
       type: 2,
     };
 
-    if (feeData.maxFeePerGas != null) {
+    if (bumpedFeeData.maxFeePerGas != null) {
       eip1559Transaction.maxFeePerGas =
-        feeData.maxFeePerGas;
+        bumpedFeeData.maxFeePerGas;
     }
 
-    if (feeData.maxPriorityFeePerGas != null) {
+    if (bumpedFeeData.maxPriorityFeePerGas != null) {
       eip1559Transaction.maxPriorityFeePerGas =
-        feeData.maxPriorityFeePerGas;
+        bumpedFeeData.maxPriorityFeePerGas;
     }
+    let tx: ethers.TransactionResponse;
     try {
-      return await this.sendAndReturn(
+      tx = await this.send(
         signer.signer,
         provider,
         eip1559Transaction,
@@ -315,23 +446,28 @@ export class SignerService implements OnModuleInit {
       );
 
       const gasPrice =
-        feeData.gasPrice ?? feeData.maxFeePerGas;
+        bumpedFeeData.gasPrice ??
+        bumpedFeeData.maxFeePerGas;
       const legacyTransaction: ethers.TransactionRequest = {
         to,
         value: txValue,
         data,
+        type: 0,
+        gasLimit,
       };
 
       if (gasPrice != null) {
         legacyTransaction.gasPrice = gasPrice;
       }
 
-      return this.sendAndReturn(
+      tx = await this.send(
         signer.signer,
         provider,
         legacyTransaction,
       );
     }
+
+    return this.waitAndReturn(tx);
   }
 
   async getTransaction(

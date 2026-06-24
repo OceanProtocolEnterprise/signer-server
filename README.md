@@ -78,9 +78,35 @@ Create a `.env` file:
 ```env
 PRIVATE_KEYS=[{"id":1,"key":"0x..."}]
 
-NODE_URI_MAP={
-  "11155111":"https://ethereum-sepolia.publicnode.com"
-}
+NODE_URI_MAP=[
+  {
+    "11155111": {
+      "key": "https://eth-sepolia.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
+      "multiplier": 3
+    }
+  },
+  {
+    "11155420": {
+      "key": "https://opt-sepolia.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
+      "multiplier": 2
+    }
+  },
+  {
+    "10": {
+      "key": "https://opt-mainnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
+      "multiplier": 1.5
+    }
+  },
+  {
+    "1": {
+      "key": "https://eth-mainnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
+      "multiplier": 2
+    }
+  }
+]
+
+If `multiplier` is omitted, the service uses built-in defaults for these chains:
+Sepolia `11155111` = `3`, OP Sepolia `11155420` = `2`, OP Mainnet `10` = `1.5`, Ethereum Mainnet `1` = `2`.
 
 AUTHENTIK_JWKS_URI=https://example.com/jwks/
 AUTHENTIK_ISSUER=https://example.com/
