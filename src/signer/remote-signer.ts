@@ -34,11 +34,11 @@ export class RemoteSigner extends ethers.AbstractSigner {
     this.address = address;
   }
 
-  private async invokeApi<T>(
+  private async invokeApi<ResponseType>(
     method: string,
     path: string,
     body?: unknown,
-  ): Promise<any> {
+  ): Promise<ResponseType> {
     const response = await fetch(
       `${this.serviceUrl}${path}`,
       {
