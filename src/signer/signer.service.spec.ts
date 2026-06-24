@@ -92,8 +92,6 @@ describe('SignerService', () => {
     );
     mockProvider.getFeeData.mockResolvedValue({
       gasPrice: 1n,
-      maxFeePerGas: 3n,
-      maxPriorityFeePerGas: 1n,
     });
 
     const module: TestingModule =
@@ -236,9 +234,9 @@ describe('SignerService', () => {
       to: '0xto',
       value: 100n,
       data: '0xdata',
-      type: 2,
-      maxFeePerGas: 3n,
-      maxPriorityFeePerGas: 1n,
+      type: 0,
+      gasLimit: 25200n,
+      gasPrice: 1n,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
       '0xMockAddress1',
@@ -293,9 +291,9 @@ describe('SignerService', () => {
       to: '0xto',
       value: 100n,
       data: '0xdata',
-      type: 2,
-      maxFeePerGas: 3n,
-      maxPriorityFeePerGas: 1n,
+      type: 0,
+      gasLimit: 25200n,
+      gasPrice: 1n,
     });
   });
 
@@ -324,9 +322,9 @@ describe('SignerService', () => {
       to: '0xto',
       value: 100n,
       data: '0xdata',
-      type: 2,
-      maxFeePerGas: 6n,
-      maxPriorityFeePerGas: 2n,
+      type: 0,
+      gasLimit: 25200n,
+      gasPrice: 2n,
     });
   });
 
@@ -343,63 +341,11 @@ describe('SignerService', () => {
     );
 
     expect(loggerLogSpy).toHaveBeenCalledWith(
-      'feeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
+      'feeData: {"gasPrice":"1"}',
     );
     expect(loggerLogSpy).toHaveBeenCalledWith(
-      'bumpedFeeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
+      'bumpedFeeData: {"gasPrice":"1"}',
     );
-  });
-
-  it('falls back to a legacy transaction when type 2 fails', async () => {
-    const loggerLogSpy = jest
-      .spyOn(Logger.prototype, 'log')
-      .mockImplementation();
-    const type2Error = new Error('type 2 failed');
-    mockProvider.getFeeData.mockResolvedValue({
-      gasPrice: 2n,
-      maxFeePerGas: 10n,
-      maxPriorityFeePerGas: 1n,
-    });
-    mockSendTransaction
-      .mockRejectedValueOnce(type2Error)
-      .mockResolvedValueOnce({
-        hash: '0xlegacyhash',
-        from: '0xMockAddress1',
-        to: '0xto',
-        nonce: 2,
-        wait: mockWait,
-      });
-
-    const result = await service.sendTransaction(
-      11155111,
-      '0xto',
-      '100',
-      '0xdata',
-      undefined,
-    );
-
-    expect(result.hash).toBe('0xlegacyhash');
-    expect(mockSendTransaction).toHaveBeenNthCalledWith(1, {
-      to: '0xto',
-      value: 100n,
-      data: '0xdata',
-      type: 2,
-      maxFeePerGas: 10n,
-      maxPriorityFeePerGas: 1n,
-    });
-    expect(mockSendTransaction).toHaveBeenNthCalledWith(2, {
-      to: '0xto',
-      value: 100n,
-      data: '0xdata',
-      type: 0,
-      gasLimit: 25200n,
-      gasPrice: 2n,
-    });
-    expect(loggerLogSpy).toHaveBeenCalledWith(
-      'EIP-1559 transaction failed; falling back to legacy transaction',
-      type2Error.stack,
-    );
-    expect(mockWait).toHaveBeenCalledWith(1, 180000);
   });
 
   it('returns the transaction when receipt wait times out after broadcast', async () => {

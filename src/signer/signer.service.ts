@@ -154,10 +154,7 @@ export class SignerService implements OnModuleInit {
           data,
         }),
       ]);
-    const gasPrice =
-      maxGasCost ??
-      feeData.gasPrice ??
-      feeData.maxFeePerGas;
+    const gasPrice = maxGasCost ?? feeData.gasPrice;
     const gasLimit =
       (gasEstimate *
         BigInt(SignerService.defaultGasLimitBumpPercent) +
@@ -206,14 +203,6 @@ export class SignerService implements OnModuleInit {
     return {
       gasPrice: this.bumpFee(
         feeData.gasPrice,
-        feeBumpPercent,
-      ),
-      maxFeePerGas: this.bumpFee(
-        feeData.maxFeePerGas,
-        feeBumpPercent,
-      ),
-      maxPriorityFeePerGas: this.bumpFee(
-        feeData.maxPriorityFeePerGas,
         feeBumpPercent,
       ),
     };
@@ -411,61 +400,26 @@ export class SignerService implements OnModuleInit {
       to,
       txValue,
       data,
-      bumpedFeeData.maxFeePerGas ?? bumpedFeeData.gasPrice,
+      bumpedFeeData.gasPrice,
     );
 
-    const eip1559Transaction: ethers.TransactionRequest = {
+    const legacyTransaction: ethers.TransactionRequest = {
       to,
       value: txValue,
       data,
-      type: 2,
+      type: 0,
+      gasLimit,
     };
 
-    if (bumpedFeeData.maxFeePerGas != null) {
-      eip1559Transaction.maxFeePerGas =
-        bumpedFeeData.maxFeePerGas;
+    if (bumpedFeeData.gasPrice != null) {
+      legacyTransaction.gasPrice = bumpedFeeData.gasPrice;
     }
 
-    if (bumpedFeeData.maxPriorityFeePerGas != null) {
-      eip1559Transaction.maxPriorityFeePerGas =
-        bumpedFeeData.maxPriorityFeePerGas;
-    }
-    let tx: ethers.TransactionResponse;
-    try {
-      tx = await this.send(
-        signer.signer,
-        provider,
-        eip1559Transaction,
-      );
-    } catch (error) {
-      this.logger.log(
-        'EIP-1559 transaction failed; falling back to legacy transaction',
-        error instanceof Error
-          ? error.stack
-          : String(error),
-      );
-
-      const gasPrice =
-        bumpedFeeData.gasPrice ??
-        bumpedFeeData.maxFeePerGas;
-      const legacyTransaction: ethers.TransactionRequest = {
-        to,
-        value: txValue,
-        data,
-        type: 0,
-        gasLimit,
-      };
-
-      if (gasPrice != null) {
-        legacyTransaction.gasPrice = gasPrice;
-      }
-
-      tx = await this.send(
-        signer.signer,
-        provider,
-        legacyTransaction,
-      );
-    }
+    const tx = await this.send(
+      signer.signer,
+      provider,
+      legacyTransaction,
+    );
 
     return this.waitAndReturn(tx);
   }
