@@ -237,8 +237,8 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 9n,
-      maxPriorityFeePerGas: 3n,
+      maxFeePerGas: 3n,
+      maxPriorityFeePerGas: 1n,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
       '0xMockAddress1',
@@ -270,18 +270,51 @@ describe('SignerService', () => {
     expect(mockSendTransaction).not.toHaveBeenCalled();
   });
 
-  it('uses configured transaction fee bump percentage', async () => {
+  it('does not bump transaction fees when config has no percentage for the chain', async () => {
     (
       service as unknown as {
         configService: ConfigService;
       }
     ).configService.get = jest.fn((key: string) => {
-      if (key === 'signer.feeBumpPercent') return 200;
+      if (key === 'signer.feeBumpPercentByChain') {
+        return {};
+      }
       return undefined;
     });
 
     await service.sendTransaction(
       11155111,
+      '0xto',
+      '100',
+      '0xdata',
+    );
+
+    expect(mockSendTransaction).toHaveBeenCalledWith({
+      to: '0xto',
+      value: 100n,
+      data: '0xdata',
+      type: 2,
+      maxFeePerGas: 3n,
+      maxPriorityFeePerGas: 1n,
+    });
+  });
+
+  it('uses chain-specific transaction fee bump percentage when configured', async () => {
+    (
+      service as unknown as {
+        configService: ConfigService;
+      }
+    ).configService.get = jest.fn((key: string) => {
+      if (key === 'signer.feeBumpPercentByChain') {
+        return {
+          '11155420': 200,
+        };
+      }
+      return undefined;
+    });
+
+    await service.sendTransaction(
+      11155420,
       '0xto',
       '100',
       '0xdata',
@@ -313,7 +346,7 @@ describe('SignerService', () => {
       'feeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
     );
     expect(loggerLogSpy).toHaveBeenCalledWith(
-      'bumpedFeeData: {"gasPrice":"3","maxFeePerGas":"9","maxPriorityFeePerGas":"3"}',
+      'bumpedFeeData: {"gasPrice":"1","maxFeePerGas":"3","maxPriorityFeePerGas":"1"}',
     );
   });
 
@@ -351,8 +384,8 @@ describe('SignerService', () => {
       value: 100n,
       data: '0xdata',
       type: 2,
-      maxFeePerGas: 30n,
-      maxPriorityFeePerGas: 3n,
+      maxFeePerGas: 10n,
+      maxPriorityFeePerGas: 1n,
     });
     expect(mockSendTransaction).toHaveBeenNthCalledWith(2, {
       to: '0xto',
@@ -360,7 +393,7 @@ describe('SignerService', () => {
       data: '0xdata',
       type: 0,
       gasLimit: 25200n,
-      gasPrice: 6n,
+      gasPrice: 2n,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
       'EIP-1559 transaction failed; falling back to legacy transaction',

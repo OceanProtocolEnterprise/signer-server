@@ -4,7 +4,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  Min,
   validateSync,
 } from 'class-validator';
 
@@ -18,11 +17,6 @@ class EnvironmentVariables {
 
   @IsString()
   NODE_URI_MAP: string;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(100)
-  SIGNER_FEE_BUMP_PERCENT?: number;
 
   @IsOptional()
   @IsString()

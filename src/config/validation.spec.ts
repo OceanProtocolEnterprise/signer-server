@@ -5,7 +5,8 @@ describe('config validation', () => {
   const validBaseConfig = {
     SIGNER_MODE: 'local',
     PRIVATE_KEYS: `[{"walletId":1,"key":"0x${'1'.repeat(64)}"}]`,
-    NODE_URI_MAP: '{"11155111":"https://test.rpc"}',
+    NODE_URI_MAP:
+      '[{"11155111":{"key":"https://test.rpc","multiplier":1}}]',
     AUTHENTIK_JWKS_URI: 'https://test/jwks',
     AUTHENTIK_ISSUER: 'https://issuer',
     AUTHENTIK_AUDIENCE: 'client-id',
@@ -36,23 +37,5 @@ describe('config validation', () => {
         SIGNER_MODE: 'remote',
       }),
     ).toThrow('SIGNER_MODE must be either local or vault');
-  });
-
-  it('accepts signer fee bump percentage', () => {
-    expect(() =>
-      validate({
-        ...validBaseConfig,
-        SIGNER_FEE_BUMP_PERCENT: '300',
-      }),
-    ).not.toThrow();
-  });
-
-  it('rejects signer fee bump percentage below 100', () => {
-    expect(() =>
-      validate({
-        ...validBaseConfig,
-        SIGNER_FEE_BUMP_PERCENT: '99',
-      }),
-    ).toThrow();
   });
 });
