@@ -2,15 +2,12 @@ import {
   TestApp,
   createTestApp,
   generateValidHeaders,
-  VAULT_TEST_CONFIG,
   isVaultAvailable,
   skipIfNoValidToken,
 } from '../setup/test-config';
 import { ethers } from 'ethers';
 
-// Mock ocean.js for testing
 jest.mock('@oceanprotocol/lib', () => {
-  // Mock Datatoken class
   const mockDatatokenInstance = {
     balance: jest
       .fn()
@@ -56,7 +53,6 @@ jest.mock('@oceanprotocol/lib', () => {
       ),
   };
 
-  // Mock NftFactory class
   const mockNftFactoryInstance = {
     createNftWithDatatoken: jest
       .fn()
@@ -83,7 +79,6 @@ jest.mock('@oceanprotocol/lib', () => {
       }),
   };
 
-  // Mock Nft class
   const mockNftInstance = {
     addManager: jest
       .fn()
@@ -122,7 +117,6 @@ jest.mock('@oceanprotocol/lib', () => {
       ),
   };
 
-  // Mock Aquarius class
   const mockAquariusInstance = {
     resolve: jest.fn().mockImplementation((did) => {
       return Promise.resolve({
@@ -150,7 +144,6 @@ jest.mock('@oceanprotocol/lib', () => {
     waitForIndexer: jest.fn().mockResolvedValue(true),
   };
 
-  // Mock ProviderInstance
   const mockProviderInstance = {
     encrypt: jest
       .fn()
@@ -212,7 +205,6 @@ jest.mock('@oceanprotocol/lib', () => {
       ),
   };
 
-  // Mock ConfigHelper
   class MockConfigHelper {
     getConfig(chainId: number) {
       return {
@@ -292,7 +284,6 @@ describeIfVault(
       });
       validHeaders = generateValidHeaders();
 
-      // Get the address from the test app
       const addressResponse = await testApp
         .request()
         .get('/address')
@@ -307,11 +298,6 @@ describeIfVault(
       }
     }, 10000);
 
-    /**
-     * Helper to create a signer for testing that uses the test app endpoints
-     * This creates a simple signer that implements the minimal required methods
-     * and follows the pattern from demo.vault.ts
-     */
     function createTestSigner(
       provider: ethers.Provider,
     ): any {
@@ -394,10 +380,6 @@ describeIfVault(
       return signer;
     }
 
-    /**
-     * Helper to check if wallet has sufficient funds
-     * Skips test if insufficient funds
-     */
     async function checkSufficientFunds(
       provider: ethers.Provider,
       address: string,
@@ -484,7 +466,6 @@ describeIfVault(
         const eurcAddress =
           '0x08210F9170F89Ab7658F0B5E3fF39b0E03C594D4';
 
-        // Check if we have enough funds for this test
         const hasFunds = await checkSufficientFunds(
           provider,
           address,
@@ -515,7 +496,6 @@ describeIfVault(
 
         const address = await signer.getAddress();
 
-        // Check if we have enough funds for this test
         const hasFunds = await checkSufficientFunds(
           provider,
           address,
@@ -529,7 +509,6 @@ describeIfVault(
         const eurcAddress =
           '0x08210F9170F89Ab7658F0B5E3fF39b0E03C594D4';
 
-        // Mock the approve call to succeed
         datatoken.approve = jest.fn().mockResolvedValue({
           hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
           wait: () => Promise.resolve({ status: 1 }),
@@ -601,7 +580,6 @@ describeIfVault(
             address.toLowerCase(),
           );
         } catch (error) {
-          // Vault signer may not support message signing (Kaleido ethsign)
           console.warn(
             'Vault signer message signing not supported:',
             error.message,
@@ -655,7 +633,6 @@ describeIfVault(
 
         const address = await signer.getAddress();
 
-        // Check if we have enough funds for this test
         const hasFunds = await checkSufficientFunds(
           provider,
           address,
@@ -665,7 +642,6 @@ describeIfVault(
           return;
         }
 
-        // Mock the createNftWithDatatoken call
         nftFactory.createNftWithDatatoken = jest
           .fn()
           .mockResolvedValue({
@@ -815,7 +791,6 @@ describeIfVault(
         const providerUrl =
           'https://ocean-node.example.com';
 
-        // Create a simple DDO
         const ddo = {
           id: 'did:ope:test',
           version: '5.0.0',
@@ -830,12 +805,10 @@ describeIfVault(
           ],
         };
 
-        // Mock encrypt
         ProviderInstance.encrypt = jest
           .fn()
           .mockResolvedValue('0xencrypteddata');
 
-        // Mock Aquarius validate
         Aquarius.prototype.validate = jest
           .fn()
           .mockResolvedValue({
@@ -900,7 +873,6 @@ describeIfVault(
         const did =
           'did:ope:156d63ab49a7bff096964763439367026f88a7604e1aa037e5ce2ee1018b5cb3';
 
-        // Aquarius.resolve doesn't need a signer
         const ddo = await aquarius.resolve(did);
 
         if (ddo) {
@@ -1007,7 +979,6 @@ describeIfVault(
           return;
         }
 
-        // Mock the full consume flow
         const did =
           'did:ope:156d63ab49a7bff096964763439367026f88a7604e1aa037e5ce2ee1018b5cb3';
         const serviceId = 'service-1';
@@ -1019,7 +990,6 @@ describeIfVault(
         const freId =
           '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
 
-        // Mock the buyFromFreAndOrder call
         datatoken.buyFromFreAndOrder = jest
           .fn()
           .mockResolvedValue({
@@ -1031,7 +1001,6 @@ describeIfVault(
               }),
           });
 
-        // 1. Initialize provider
         const initData = await ProviderInstance.initialize(
           did,
           serviceId,
@@ -1063,7 +1032,6 @@ describeIfVault(
             initData?.providerFee?.validUntil || 1234567890,
         };
 
-        // 2. Buy from FRE and Order
         const orderParams = {
           consumer: address,
           serviceIndex: 0,
@@ -1188,7 +1156,6 @@ describeIfVault(
           oceanConfig,
         );
 
-        // Mock approve to throw insufficient funds error
         datatoken.approve = jest
           .fn()
           .mockRejectedValue(
@@ -1209,7 +1176,6 @@ describeIfVault(
       });
 
       it('should handle Vault unavailability gracefully', async () => {
-        // This test verifies that the signer handles Vault errors
         const rpcUrl =
           process.env.ETHEREUM_RPC_URL ||
           'https://ethereum-sepolia.publicnode.com';
@@ -1221,7 +1187,6 @@ describeIfVault(
           },
         );
 
-        // Create a signer with invalid Vault config
         const invalidSigner = {
           provider: provider,
           getAddress: async () => {
@@ -1277,7 +1242,6 @@ describeIfVault(
       it('should validate UPSTREAM_IDP for Vault signer', async () => {
         if (skipIfNoValidToken()) return;
 
-        // Create a test app with different upstream IDP
         const rpcUrl =
           process.env.ETHEREUM_RPC_URL ||
           'https://ethereum-sepolia.publicnode.com';
@@ -1335,7 +1299,6 @@ describeIfVault(
       });
 
       it('should get wallet ID from Vault signer', async () => {
-        // The vault signer should return a walletId
         const address = await signer.getAddress();
         expect(address).toBeDefined();
         expect(address).toMatch(/^0x[a-fA-F0-9]{40}$/);
@@ -1363,7 +1326,6 @@ describeIfVault(
           return;
         }
 
-        // Mock approve with EIP-1559 transaction
         dt.approve = jest.fn().mockResolvedValue({
           hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
           wait: () => Promise.resolve({ status: 1 }),

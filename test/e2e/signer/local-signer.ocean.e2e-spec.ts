@@ -6,9 +6,7 @@ import {
 } from '../setup/test-config';
 import { ethers } from 'ethers';
 
-// Mock ocean.js for testing
 jest.mock('@oceanprotocol/lib', () => {
-  // Mock Datatoken class
   const mockDatatokenInstance = {
     balance: jest
       .fn()
@@ -120,7 +118,6 @@ jest.mock('@oceanprotocol/lib', () => {
       ),
   };
 
-  // Mock Aquarius class
   const mockAquariusInstance = {
     resolve: jest.fn().mockImplementation((did) => {
       return Promise.resolve({
@@ -148,7 +145,6 @@ jest.mock('@oceanprotocol/lib', () => {
     waitForIndexer: jest.fn().mockResolvedValue(true),
   };
 
-  // Mock ProviderInstance
   const mockProviderInstance = {
     encrypt: jest
       .fn()
@@ -210,7 +206,6 @@ jest.mock('@oceanprotocol/lib', () => {
       ),
   };
 
-  // Mock ConfigHelper
   class MockConfigHelper {
     getConfig(chainId: number) {
       return {
@@ -274,7 +269,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
     });
     validHeaders = generateValidHeaders();
 
-    // Get the address from the test app
     const addressResponse = await testApp
       .request()
       .get('/address')
@@ -289,11 +283,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
     }
   }, 10000);
 
-  /**
-   * Helper to create a signer for testing that uses the test app endpoints
-   * This creates a simple signer that implements the minimal required methods
-   * and follows the pattern from demo.ts
-   */
   function createTestSigner(
     provider: ethers.Provider,
   ): any {
@@ -373,10 +362,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
     return signer;
   }
 
-  /**
-   * Helper to check if wallet has sufficient funds
-   * Skips test if insufficient funds
-   */
   async function checkSufficientFunds(
     provider: ethers.Provider,
     address: string,
@@ -460,7 +445,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
       const eurcAddress =
         '0x08210F9170F89Ab7658F0B5E3fF39b0E03C594D4';
 
-      // Check if we have enough funds for this test
       const hasFunds = await checkSufficientFunds(
         provider,
         address,
@@ -491,7 +475,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
 
       const address = await signer.getAddress();
 
-      // Check if we have enough funds for this test
       const hasFunds = await checkSufficientFunds(
         provider,
         address,
@@ -505,7 +488,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
       const eurcAddress =
         '0x08210F9170F89Ab7658F0B5E3fF39b0E03C594D4';
 
-      // Mock the approve call to succeed
       datatoken.approve = jest.fn().mockResolvedValue({
         hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
         wait: () => Promise.resolve({ status: 1 }),
@@ -620,7 +602,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
 
       const address = await signer.getAddress();
 
-      // Check if we have enough funds for this test
       const hasFunds = await checkSufficientFunds(
         provider,
         address,
@@ -630,7 +611,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
         return;
       }
 
-      // Mock the createNftWithDatatoken call
       nftFactory.createNftWithDatatoken = jest
         .fn()
         .mockResolvedValue({
@@ -777,7 +757,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
         '0x1234567890abcdef1234567890abcdef12345678';
       const providerUrl = 'https://ocean-node.example.com';
 
-      // Create a simple DDO
       const ddo = {
         id: 'did:ope:test',
         version: '5.0.0',
@@ -792,12 +771,10 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
         ],
       };
 
-      // Mock encrypt
       ProviderInstance.encrypt = jest
         .fn()
         .mockResolvedValue('0xencrypteddata');
 
-      // Mock Aquarius validate
       Aquarius.prototype.validate = jest
         .fn()
         .mockResolvedValue({
@@ -862,7 +839,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
       const did =
         'did:ope:156d63ab49a7bff096964763439367026f88a7604e1aa037e5ce2ee1018b5cb3';
 
-      // Aquarius.resolve doesn't need a signer
       const ddo = await aquarius.resolve(did);
 
       if (ddo) {
@@ -967,7 +943,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
         return;
       }
 
-      // Mock the full consume flow
       const did =
         'did:ope:156d63ab49a7bff096964763439367026f88a7604e1aa037e5ce2ee1018b5cb3';
       const serviceId = 'service-1';
@@ -979,7 +954,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
       const freId =
         '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
 
-      // Mock the buyFromFreAndOrder call
       datatoken.buyFromFreAndOrder = jest
         .fn()
         .mockResolvedValue({
@@ -991,7 +965,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
             }),
         });
 
-      // 1. Initialize provider
       const initData = await ProviderInstance.initialize(
         did,
         serviceId,
@@ -1022,7 +995,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
           initData?.providerFee?.validUntil || 1234567890,
       };
 
-      // 2. Buy from FRE and Order
       const orderParams = {
         consumer: address,
         serviceIndex: 0,
@@ -1143,7 +1115,6 @@ describe('Local Signer - Ocean.js Integration Tests', () => {
         oceanConfig,
       );
 
-      // Mock approve to throw insufficient funds error
       datatoken.approve = jest
         .fn()
         .mockRejectedValue(new Error('insufficient funds'));

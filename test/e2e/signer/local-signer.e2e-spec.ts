@@ -165,14 +165,11 @@ describe('Local Signer E2E Tests', () => {
         0,
       );
 
-      // Log what we actually got for debugging
       console.log(
         'Available networks:',
         JSON.stringify(response.body.networks, null, 2),
       );
 
-      // Check if any network has chainId 11155111 (as string or number)
-      // The service might be returning chainId as string
       const hasChain = response.body.networks.some(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (n: any) => {
@@ -184,12 +181,10 @@ describe('Local Signer E2E Tests', () => {
         },
       );
 
-      // If we don't have chain 11155111, check if we have any networks at all
       if (!hasChain) {
         console.warn(
           '⚠️ Chain 11155111 not found in available networks',
         );
-        // The test should still pass if we have at least one network
         expect(
           response.body.networks.length,
         ).toBeGreaterThan(0);
@@ -308,7 +303,6 @@ describe('Local Signer E2E Tests', () => {
         .set(validHeaders)
         .send(tx);
 
-      // If insufficient funds, skip the test
       if (
         response.status === 400 &&
         typeof response.body.message === 'string' &&
@@ -325,7 +319,6 @@ describe('Local Signer E2E Tests', () => {
         return;
       }
 
-      // If the chain is not supported, skip
       if (
         response.status === 400 &&
         typeof response.body.message === 'string' &&
@@ -339,7 +332,6 @@ describe('Local Signer E2E Tests', () => {
         return;
       }
 
-      // Accept 200, 201, or 400 with appropriate message
       if (response.status === 400) {
         console.warn(
           `⚠️ Transaction failed with status 400: ${response.body.message}`,
@@ -548,7 +540,6 @@ describe('Local Signer E2E Tests', () => {
         .set(validHeaders)
         .send(tx);
 
-      // The service might return 400 with a message about unsupported chain or invalid value
       if (response.status === 500) {
         expect(response.body).toMatchObject({
           statusCode: 500,
@@ -557,7 +548,6 @@ describe('Local Signer E2E Tests', () => {
           ),
         });
       } else if (response.status === 400) {
-        // Could be "Unsupported chain ID" or validation error
         expect(response.body).toMatchObject({
           statusCode: 400,
           message: expect.any(String),
@@ -575,14 +565,12 @@ describe('Local Signer E2E Tests', () => {
       const txHash =
         '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-      // First check if the chain is supported
       const response = await testApp
         .request()
         .get(`/transaction/${txHash}`)
         .query({ chainId: LOCAL_TEST_CONFIG.testChainId })
         .set(validHeaders);
 
-      // If chain is not supported, skip the test
       if (
         response.status === 400 &&
         response.body.message &&
@@ -650,7 +638,6 @@ describe('Local Signer E2E Tests', () => {
         .query({ chainId: LOCAL_TEST_CONFIG.testChainId })
         .set(validHeaders);
 
-      // If chain is not supported, the error will be about unsupported chain
       if (
         response.status === 400 &&
         response.body.message &&
@@ -694,7 +681,6 @@ describe('Local Signer E2E Tests', () => {
         .query({ chainId: LOCAL_TEST_CONFIG.testChainId })
         .set(validHeaders);
 
-      // If chain is not supported, skip the test
       if (
         response.status === 400 &&
         response.body.message &&
@@ -716,12 +702,10 @@ describe('Local Signer E2E Tests', () => {
           0,
         );
       } else if (response.status === 500) {
-        // RPC issues - skip validation
         console.warn(
           'Nonce test skipped due to RPC issues',
         );
       } else {
-        // Unexpected status
         expect(response.status).toBe(200);
       }
     }, 10000);
