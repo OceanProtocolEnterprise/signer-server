@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 
 import { AppModule } from '../../src/app.module';
+import { API_PREFIX } from '../../src/common/constants/api.constants';
 
 describe('JWT Authentication', () => {
   let app: INestApplication;
@@ -13,6 +14,7 @@ describe('JWT Authentication', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    app.setGlobalPrefix(API_PREFIX);
     await app.init();
   });
 
@@ -20,39 +22,39 @@ describe('JWT Authentication', () => {
     await app?.close();
   });
 
-  it('GET /address should reject requests without JWT', async () => {
+  it('GET /api/v1/address should reject requests without JWT', async () => {
     const res = await request(app.getHttpServer()).get(
-      '/address',
+      `/${API_PREFIX}/address`,
     );
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /address should reject malformed JWT', async () => {
+  it('GET /api/v1/address should reject malformed JWT', async () => {
     const res = await request(app.getHttpServer())
-      .get('/address')
+      .get(`/${API_PREFIX}/address`)
       .set('Authorization', 'Bearer invalid-token');
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /health should work without token', () => {
+  it('GET /api/v1/health should work without token', () => {
     return request(app.getHttpServer())
-      .get('/health')
+      .get(`/${API_PREFIX}/health`)
       .expect(200);
   });
 
-  it('GET /nonce should reject requests without JWT', async () => {
+  it('GET /api/v1/nonce should reject requests without JWT', async () => {
     const res = await request(app.getHttpServer()).get(
-      '/nonce',
+      `/${API_PREFIX}/nonce`,
     );
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /sign-message should reject requests without JWT', async () => {
+  it('POST /api/v1/sign-message should reject requests without JWT', async () => {
     const res = await request(app.getHttpServer())
-      .post('/sign-message')
+      .post(`/${API_PREFIX}/sign-message`)
       .send({
         message: 'hello',
       });

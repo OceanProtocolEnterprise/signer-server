@@ -140,7 +140,7 @@ npm run start:dev
 Application:
 
 ```text
-http://localhost:3001
+http://localhost:3001/api/v1
 ```
 
 Swagger:
@@ -334,12 +334,12 @@ Authorization: Bearer <jwt>
 Endpoints:
 
 ```http
-GET    /address
-GET    /nonce
-GET    /transaction/:hash
+GET    /api/v1/address
+GET    /api/v1/nonce
+GET    /api/v1/transaction/:hash
 
-POST   /sign-message
-POST   /send-transaction
+POST   /api/v1/sign-message
+POST   /api/v1/send-transaction
 ```
 
 Swagger documentation:
