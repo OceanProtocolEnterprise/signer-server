@@ -17,3 +17,5 @@ process.env.AUTHENTIK_AUDIENCE =
   process.env.AUTHENTIK_AUDIENCE;
 
 process.env.PORT = process.env.PORT || '3001';
+
+process.env.JWT_TOKEN = process.env.JWT_TOKEN;

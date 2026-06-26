@@ -19,7 +19,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:e2e:auth": "jest --config ./test/jest-e2e.json --testPathPattern=auth --runInBand",
+    "test:e2e:local": "jest --config ./test/jest-e2e.json --testPathPattern=local-signer --runInBand",
+    "test:e2e:vault": "jest --config ./test/jest-e2e.json --testPathPattern=vault-signer --runInBand",
+    "test:e2e:coverage": "jest --config ./test/jest-e2e.json --coverage --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.26",
@@ -29,6 +33,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.26",
     "@nestjs/swagger": "^11.4.4",
+    "@oceanprotocol/lib": "^8.5.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "dotenv": "^16.4.5",
