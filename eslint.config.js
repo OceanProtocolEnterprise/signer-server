@@ -5,7 +5,13 @@ const security = require('eslint-plugin-security');
 
 module.exports = [
   {
-    ignores: ['dist/**', 'coverage/**', 'node_modules/**'],
+    ignores: [
+      'dist/**',
+      'coverage/**',
+      'node_modules/**',
+      'test/**',
+      'tests/**',
+    ],
   },
   {
     files: ['**/*.ts'],
