@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { AppModule } from '../../../src/app.module';
 import { HttpExceptionFilter } from '../../../src/common/filters/http-exception.filter';
+import { API_PREFIX } from '../../../src/common/constants/api.constants';
 import * as request from 'supertest';
 import { ConfigService } from '@nestjs/config';
 
@@ -63,9 +64,34 @@ export const VAULT_TEST_CONFIG: TestConfig = {
   testAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
 };
 
+const HTTP_METHODS_TO_PREFIX = [
+  'delete',
+  'get',
+  'options',
+  'patch',
+  'post',
+  'put',
+] as const;
+
 export class TestApp {
   private app: INestApplication;
   private module: TestingModule;
+
+  private withApiPrefix(path: string): string {
+    if (!path.startsWith('/')) {
+      return path;
+    }
+
+    const prefixedPath = `/${API_PREFIX}`;
+    if (
+      path === prefixedPath ||
+      path.startsWith(`${prefixedPath}/`)
+    ) {
+      return path;
+    }
+
+    return `${prefixedPath}${path}`;
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async init(configOverride?: Record<string, any>) {
@@ -182,6 +208,7 @@ export class TestApp {
     );
     this.app.useGlobalFilters(new HttpExceptionFilter());
     this.app.enableCors();
+    this.app.setGlobalPrefix(API_PREFIX);
 
     await this.app.init();
     return this.app;
@@ -200,7 +227,26 @@ export class TestApp {
   }
 
   request() {
-    return request(this.app.getHttpServer());
+    const agent = request(this.app.getHttpServer());
+
+    HTTP_METHODS_TO_PREFIX.forEach((method) => {
+      const original = agent[method].bind(agent);
+      agent[method] = ((
+        path: string,
+        ...args: Parameters<typeof original> extends [
+          string,
+          ...infer Rest,
+        ]
+          ? Rest
+          : never
+      ) =>
+        original(
+          this.withApiPrefix(path),
+          ...args,
+        )) as typeof agent[typeof method];
+    });
+
+    return agent;
   }
 }
 

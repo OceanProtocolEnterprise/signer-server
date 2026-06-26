@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { API_PREFIX } from './common/constants/api.constants';
 import {
   getServerPort,
   getTlsOptions,
@@ -36,6 +37,7 @@ async function bootstrap() {
 
   // CORS policies - adjust as needed for your deployment environment
   app.enableCors();
+  app.setGlobalPrefix(API_PREFIX);
 
   const config = new DocumentBuilder()
     .setTitle('Signer Server')
@@ -66,6 +68,7 @@ async function bootstrap() {
   logger.log(
     `Signer server running on ${tlsOptions ? 'HTTPS' : 'HTTP'} port ${port}`,
   );
+  logger.log(`API available at /${API_PREFIX}`);
   logger.log(`Swagger UI available at /${SWAGGER_PATH}`);
   logger.log(
     `OpenAPI JSON available at /${SWAGGER_PATH}-json`,
