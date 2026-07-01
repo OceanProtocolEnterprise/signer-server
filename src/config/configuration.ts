@@ -1,4 +1,5 @@
 import { DEFAULT_GAS_MULTIPLIERS_BY_CHAIN } from './default-gas-multipliers.config';
+import { parseAllowedOrigins } from '../common/origins';
 
 type NodeUriMapEntry = Record<
   string,
@@ -231,6 +232,9 @@ export default () => {
       audience: process.env.AUTHENTIK_AUDIENCE,
       upstreamIdp: process.env.UPSTREAM_IDP,
     },
+    allowedOrigins: parseAllowedOrigins(
+      process.env.ALLOWED_ORIGINS,
+    ),
     port: parseInt(process.env.PORT || '3001', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
     apiKeyFallback: process.env.API_KEY_FALLBACK,

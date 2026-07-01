@@ -112,10 +112,16 @@ AUTHENTIK_JWKS_URI=https://example.com/jwks/
 AUTHENTIK_ISSUER=https://example.com/
 AUTHENTIK_AUDIENCE=client-id
 UPSTREAM_IDP=participant-idp
+ALLOWED_ORIGINS=['https://market-git-feat-stage-ocean-enterprise.vercel.app','https://wallet-dev-stage.oceanenterprise.io']
 
 PORT=3001
 NODE_ENV=development
 ```
+
+`ALLOWED_ORIGINS` is optional. When unset, origin checks are disabled.
+When set, use an array of origins.
+Requests without a matching `Origin` header are rejected with `403`
+before JWT validation.
 
 ---
 

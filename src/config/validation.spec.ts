@@ -38,4 +38,14 @@ describe('config validation', () => {
       }),
     ).toThrow('SIGNER_MODE must be either local or vault');
   });
+
+  it('allows optional allowed origins', () => {
+    expect(() =>
+      validate({
+        ...validBaseConfig,
+        ALLOWED_ORIGINS:
+          "['https://market-git-feat-stage-ocean-enterprise.vercel.app','https://wallet-dev-stage.oceanenterprise.io']",
+      }),
+    ).not.toThrow();
+  });
 });

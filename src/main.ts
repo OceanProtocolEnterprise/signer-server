@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   SwaggerModule,
   DocumentBuilder,
@@ -24,6 +25,9 @@ async function bootstrap() {
     ...(tlsOptions ? { httpsOptions: tlsOptions } : {}),
   });
   const logger = new Logger('Bootstrap');
+  const configService = app.get(ConfigService);
+  const allowedOrigins =
+    configService.get<string[]>('allowedOrigins') ?? [];
 
   // Global pipes, filters, interceptors
   app.useGlobalPipes(
@@ -35,8 +39,11 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // CORS policies - adjust as needed for your deployment environment
-  app.enableCors();
+  app.enableCors(
+    allowedOrigins.length
+      ? { origin: allowedOrigins }
+      : undefined,
+  );
   app.setGlobalPrefix(API_PREFIX);
 
   const config = new DocumentBuilder()

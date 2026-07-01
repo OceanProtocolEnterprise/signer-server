@@ -217,4 +217,53 @@ describe('configuration', () => {
       'participant-idp',
     );
   });
+
+  it('leaves allowed origins empty when not configured', () => {
+    process.env.SIGNER_MODE = 'vault';
+    delete process.env.ALLOWED_ORIGINS;
+
+    expect(configuration().allowedOrigins).toEqual([]);
+  });
+
+  it('parses comma-separated allowed origins', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.ALLOWED_ORIGINS =
+      'https://market-git-feat-stage-ocean-enterprise.vercel.app/, https://wallet-dev-stage.oceanenterprise.io/';
+
+    expect(configuration().allowedOrigins).toEqual([
+      'https://market-git-feat-stage-ocean-enterprise.vercel.app',
+      'https://wallet-dev-stage.oceanenterprise.io',
+    ]);
+  });
+
+  it('parses single-quoted array allowed origins', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.ALLOWED_ORIGINS =
+      "['https://market-git-feat-stage-ocean-enterprise.vercel.app/','https://wallet-dev-stage.oceanenterprise.io/']";
+
+    expect(configuration().allowedOrigins).toEqual([
+      'https://market-git-feat-stage-ocean-enterprise.vercel.app',
+      'https://wallet-dev-stage.oceanenterprise.io',
+    ]);
+  });
+
+  it('parses JSON array allowed origins', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.ALLOWED_ORIGINS =
+      '["https://market-git-feat-stage-ocean-enterprise.vercel.app/","https://wallet-dev-stage.oceanenterprise.io/"]';
+
+    expect(configuration().allowedOrigins).toEqual([
+      'https://market-git-feat-stage-ocean-enterprise.vercel.app',
+      'https://wallet-dev-stage.oceanenterprise.io',
+    ]);
+  });
+
+  it('rejects invalid allowed origins', () => {
+    process.env.SIGNER_MODE = 'vault';
+    process.env.ALLOWED_ORIGINS = 'not-an-origin';
+
+    expect(() => configuration()).toThrow(
+      'ALLOWED_ORIGINS contains invalid origin: not-an-origin',
+    );
+  });
 });

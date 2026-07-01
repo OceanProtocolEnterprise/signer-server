@@ -51,6 +51,10 @@ class EnvironmentVariables {
   @IsString()
   UPSTREAM_IDP?: string;
 
+  @IsOptional()
+  @IsString()
+  ALLOWED_ORIGINS?: string;
+
   @IsNumber()
   PORT: number;
 
