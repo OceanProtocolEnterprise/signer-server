@@ -105,6 +105,7 @@ describe('SignerService', () => {
     mockProvider.getFeeData.mockResolvedValue({
       gasPrice: 1n,
     });
+    mockProvider.getTransactionCount.mockResolvedValue(1);
 
     const module: TestingModule =
       await Test.createTestingModule({
@@ -249,6 +250,7 @@ describe('SignerService', () => {
       type: 0,
       gasLimit: 25200n,
       gasPrice: 1n,
+      nonce: 1,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
       '0xMockAddress1',
@@ -284,6 +286,7 @@ describe('SignerService', () => {
         wait: mockWait,
       };
     });
+    mockProvider.getTransactionCount.mockResolvedValue(95);
 
     const firstTransaction = service.sendTransaction(
       11155111,
@@ -308,6 +311,14 @@ describe('SignerService', () => {
       expect.objectContaining({ nonce: 2 }),
     ]);
     expect(mockSendTransaction).toHaveBeenCalledTimes(2);
+    expect(mockSendTransaction).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ nonce: 95 }),
+    );
+    expect(mockSendTransaction).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ nonce: 96 }),
+    );
   });
 
   it('continues the transaction queue after a broadcast failure', async () => {
@@ -395,6 +406,7 @@ describe('SignerService', () => {
       type: 0,
       gasLimit: 25200n,
       gasPrice: 1n,
+      nonce: 1,
     });
   });
 
@@ -426,6 +438,7 @@ describe('SignerService', () => {
       type: 0,
       gasLimit: 25200n,
       gasPrice: 2n,
+      nonce: 1,
     });
   });
 

@@ -291,6 +291,7 @@ describe('OpenBaoVaultSigner', () => {
       type: 0,
       gasLimit: 25200n,
       gasPrice: 5n,
+      nonce: 8,
     });
 
     const signRequest = (global.fetch as jest.Mock).mock
@@ -299,7 +300,7 @@ describe('OpenBaoVaultSigner', () => {
       to: '0x0000000000000000000000000000000000000001',
       value: '0x64',
       data: '0x',
-      nonce: '0x07',
+      nonce: '0x08',
       gas: 25200,
       chainId: 11155111,
       gasPrice: '0x05',
@@ -307,5 +308,8 @@ describe('OpenBaoVaultSigner', () => {
     expect(broadcastTransaction).toHaveBeenCalledWith(
       '0xf801',
     );
+    expect(
+      provider.getTransactionCount,
+    ).not.toHaveBeenCalled();
   });
 });

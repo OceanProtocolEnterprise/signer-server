@@ -34,6 +34,7 @@ export class SignerService implements OnModuleInit {
     string,
     Promise<unknown>
   >();
+  private nextNonces = new Map<string, number>();
   private signers = new Map<number, ManagedSigner>();
   private defaultWalletId: number;
   private defaultVaultSigner?: ManagedSigner;
@@ -215,6 +216,36 @@ export class SignerService implements OnModuleInit {
 
     void transaction.then(clearQueue, clearQueue);
     return transaction;
+  }
+
+  private async sendNextTransaction(
+    chainId: number,
+    address: string,
+    signer: ethers.AbstractSigner,
+    provider: ethers.JsonRpcProvider,
+    transaction: ethers.TransactionRequest,
+  ): Promise<ethers.TransactionResponse> {
+    const nonceKey = `${chainId}:${address.toLowerCase()}`;
+    const pendingNonce = await provider.getTransactionCount(
+      address,
+      'pending',
+    );
+    const nonce = Math.max(
+      pendingNonce,
+      this.nextNonces.get(nonceKey) ?? pendingNonce,
+    );
+
+    try {
+      const response = await this.send(signer, provider, {
+        ...transaction,
+        nonce,
+      });
+      this.nextNonces.set(nonceKey, nonce + 1);
+      return response;
+    } catch (error) {
+      this.nextNonces.delete(nonceKey);
+      throw error;
+    }
   }
 
   private bumpFee(
@@ -450,7 +481,9 @@ export class SignerService implements OnModuleInit {
       chainId,
       signer.address,
       () =>
-        this.send(
+        this.sendNextTransaction(
+          chainId,
+          signer.address,
           signer.signer,
           provider,
           legacyTransaction,

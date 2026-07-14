@@ -219,10 +219,13 @@ export class OpenBaoVaultSigner
 
     const from = await this.getAddress();
     const resolved = await ethers.resolveProperties(tx);
-    const nonce = await this.provider.getTransactionCount(
-      from,
-      'pending',
-    );
+    const nonce =
+      resolved.nonce != null
+        ? Number(resolved.nonce)
+        : await this.provider.getTransactionCount(
+            from,
+            'pending',
+          );
     const network = await this.provider.getNetwork();
     const value = resolved.value
       ? BigInt(resolved.value.toString())
