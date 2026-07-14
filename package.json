@@ -1,6 +1,6 @@
 {
   "name": "signer-service",
-  "version": "1.0.0",
+  "version": "0.5.1",
   "description": "Remote signing service with Authentik authentication",
   "author": "Ocean Enterprise",
   "license": "Apache-2.0",
