@@ -197,12 +197,30 @@ export class SignerService implements OnModuleInit {
     operation: () => Promise<T>,
   ): Promise<T> {
     const queueKey = `${chainId}:${address.toLowerCase()}`;
+    const waitingForPrevious =
+      this.transactionQueues.has(queueKey);
     const previousTransaction =
       this.transactionQueues.get(queueKey) ??
       Promise.resolve();
     const transaction = previousTransaction
       .catch(() => undefined)
-      .then(operation);
+      .then(() => {
+        this.logger.log(
+          `Processing queued transaction: ${JSON.stringify({
+            chainId,
+            address,
+          })}`,
+        );
+        return operation();
+      });
+
+    this.logger.log(
+      `Transaction queued: ${JSON.stringify({
+        chainId,
+        address,
+        waitingForPrevious,
+      })}`,
+    );
 
     this.transactionQueues.set(queueKey, transaction);
 
@@ -230,9 +248,20 @@ export class SignerService implements OnModuleInit {
       address,
       'pending',
     );
+    const cachedNextNonce = this.nextNonces.get(nonceKey);
     const nonce = Math.max(
       pendingNonce,
-      this.nextNonces.get(nonceKey) ?? pendingNonce,
+      cachedNextNonce ?? pendingNonce,
+    );
+
+    this.logger.log(
+      `Transaction nonce allocated: ${JSON.stringify({
+        chainId,
+        address,
+        pendingNonce,
+        cachedNextNonce: cachedNextNonce ?? null,
+        selectedNonce: nonce,
+      })}`,
     );
 
     try {
@@ -241,9 +270,29 @@ export class SignerService implements OnModuleInit {
         nonce,
       });
       this.nextNonces.set(nonceKey, nonce + 1);
+      this.logger.log(
+        `Transaction broadcast accepted: ${JSON.stringify({
+          chainId,
+          address,
+          nonce,
+          hash: response.hash,
+          nextNonce: nonce + 1,
+        })}`,
+      );
       return response;
     } catch (error) {
       this.nextNonces.delete(nonceKey);
+      this.logger.error(
+        `Transaction broadcast failed: ${JSON.stringify({
+          chainId,
+          address,
+          nonce,
+          error:
+            error instanceof Error
+              ? error.message
+              : String(error),
+        })}`,
+      );
       throw error;
     }
   }
