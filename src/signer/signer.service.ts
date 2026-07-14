@@ -30,6 +30,11 @@ export class SignerService implements OnModuleInit {
     number,
     ethers.JsonRpcProvider
   >();
+  private transactionQueues = new Map<
+    string,
+    Promise<unknown>
+  >();
+  private nextNonces = new Map<string, number>();
   private signers = new Map<number, ManagedSigner>();
   private defaultWalletId: number;
   private defaultVaultSigner?: ManagedSigner;
@@ -184,6 +189,112 @@ export class SignerService implements OnModuleInit {
     return signer
       .connect(provider)
       .sendTransaction(txRequest);
+  }
+
+  private enqueueTransaction<T>(
+    chainId: number,
+    address: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const queueKey = `${chainId}:${address.toLowerCase()}`;
+    const waitingForPrevious =
+      this.transactionQueues.has(queueKey);
+    const previousTransaction =
+      this.transactionQueues.get(queueKey) ??
+      Promise.resolve();
+    const transaction = previousTransaction
+      .catch(() => undefined)
+      .then(() => {
+        this.logger.log(
+          `Processing queued transaction: ${JSON.stringify({
+            chainId,
+            address,
+          })}`,
+        );
+        return operation();
+      });
+
+    this.logger.log(
+      `Transaction queued: ${JSON.stringify({
+        chainId,
+        address,
+        waitingForPrevious,
+      })}`,
+    );
+
+    this.transactionQueues.set(queueKey, transaction);
+
+    const clearQueue = () => {
+      if (
+        this.transactionQueues.get(queueKey) === transaction
+      ) {
+        this.transactionQueues.delete(queueKey);
+      }
+    };
+
+    void transaction.then(clearQueue, clearQueue);
+    return transaction;
+  }
+
+  private async sendNextTransaction(
+    chainId: number,
+    address: string,
+    signer: ethers.AbstractSigner,
+    provider: ethers.JsonRpcProvider,
+    transaction: ethers.TransactionRequest,
+  ): Promise<ethers.TransactionResponse> {
+    const nonceKey = `${chainId}:${address.toLowerCase()}`;
+    const pendingNonce = await provider.getTransactionCount(
+      address,
+      'pending',
+    );
+    const cachedNextNonce = this.nextNonces.get(nonceKey);
+    const nonce = Math.max(
+      pendingNonce,
+      cachedNextNonce ?? pendingNonce,
+    );
+
+    this.logger.log(
+      `Transaction nonce allocated: ${JSON.stringify({
+        chainId,
+        address,
+        pendingNonce,
+        cachedNextNonce: cachedNextNonce ?? null,
+        selectedNonce: nonce,
+      })}`,
+    );
+
+    try {
+      const response = await this.send(signer, provider, {
+        ...transaction,
+        nonce,
+      });
+      this.nextNonces.set(nonceKey, nonce + 1);
+      this.logger.log(
+        `Transaction broadcast accepted: ${JSON.stringify({
+          chainId,
+          address,
+          nonce,
+          hash: response.hash,
+          nextNonce: nonce + 1,
+        })}`,
+      );
+      return response;
+    } catch (error) {
+      this.nextNonces.delete(nonceKey);
+      this.logger.error(
+        `Transaction broadcast failed: ${JSON.stringify({
+          chainId,
+          address,
+          nonce,
+          error:
+            error instanceof Error
+              ? error.message
+              : String(error),
+        })}`,
+      );
+      throw error;
+    }
   }
 
   private bumpFee(
@@ -415,10 +526,17 @@ export class SignerService implements OnModuleInit {
       legacyTransaction.gasPrice = bumpedFeeData.gasPrice;
     }
 
-    const tx = await this.send(
-      signer.signer,
-      provider,
-      legacyTransaction,
+    const tx = await this.enqueueTransaction(
+      chainId,
+      signer.address,
+      () =>
+        this.sendNextTransaction(
+          chainId,
+          signer.address,
+          signer.signer,
+          provider,
+          legacyTransaction,
+        ),
     );
 
     return this.waitAndReturn(tx);

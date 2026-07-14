@@ -86,6 +86,18 @@ describe('SignerService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockWallets.clear();
+    mockWait.mockReset().mockResolvedValue({
+      blockNumber: 123,
+      gasUsed: 21000n,
+      status: 1,
+    });
+    mockSendTransaction.mockReset().mockResolvedValue({
+      hash: '0xtxhash',
+      from: '0xMockAddress1',
+      to: '0xto',
+      nonce: 1,
+      wait: mockWait,
+    });
     mockProvider.estimateGas.mockResolvedValue(21000n);
     mockProvider.getBalance.mockResolvedValue(
       1_000_000_000_000_000_000n,
@@ -93,6 +105,7 @@ describe('SignerService', () => {
     mockProvider.getFeeData.mockResolvedValue({
       gasPrice: 1n,
     });
+    mockProvider.getTransactionCount.mockResolvedValue(1);
 
     const module: TestingModule =
       await Test.createTestingModule({
@@ -237,6 +250,7 @@ describe('SignerService', () => {
       type: 0,
       gasLimit: 25200n,
       gasPrice: 1n,
+      nonce: 1,
     });
     expect(mockProvider.getBalance).toHaveBeenCalledWith(
       '0xMockAddress1',
@@ -248,6 +262,104 @@ describe('SignerService', () => {
       data: '0xdata',
     });
     expect(mockWait).toHaveBeenCalledWith(1, 180000);
+  });
+
+  it('queues concurrent transactions for the same chain and wallet', async () => {
+    let releaseFirstBroadcast!: () => void;
+    const firstBroadcast = new Promise<void>((resolve) => {
+      releaseFirstBroadcast = resolve;
+    });
+
+    mockSendTransaction.mockImplementation(async () => {
+      const transactionNumber =
+        mockSendTransaction.mock.calls.length;
+
+      if (transactionNumber === 1) {
+        await firstBroadcast;
+      }
+
+      return {
+        hash: `0xtxhash${transactionNumber}`,
+        from: '0xMockAddress1',
+        to: '0xto',
+        nonce: transactionNumber,
+        wait: mockWait,
+      };
+    });
+    mockProvider.getTransactionCount.mockResolvedValue(95);
+
+    const firstTransaction = service.sendTransaction(
+      11155111,
+      '0xto',
+    );
+    const secondTransaction = service.sendTransaction(
+      11155111,
+      '0xto',
+    );
+
+    await new Promise<void>((resolve) =>
+      setImmediate(resolve),
+    );
+    expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+
+    releaseFirstBroadcast();
+
+    await expect(
+      Promise.all([firstTransaction, secondTransaction]),
+    ).resolves.toEqual([
+      expect.objectContaining({ nonce: 1 }),
+      expect.objectContaining({ nonce: 2 }),
+    ]);
+    expect(mockSendTransaction).toHaveBeenCalledTimes(2);
+    expect(mockSendTransaction).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ nonce: 95 }),
+    );
+    expect(mockSendTransaction).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ nonce: 96 }),
+    );
+  });
+
+  it('continues the transaction queue after a broadcast failure', async () => {
+    let rejectFirstBroadcast!: (error: Error) => void;
+    const failedBroadcast = new Promise((_, reject) => {
+      rejectFirstBroadcast = reject;
+    });
+
+    mockSendTransaction
+      .mockImplementationOnce(() => failedBroadcast)
+      .mockResolvedValueOnce({
+        hash: '0xsecond',
+        from: '0xMockAddress1',
+        to: '0xto',
+        nonce: 2,
+        wait: mockWait,
+      });
+
+    const firstTransaction = service.sendTransaction(
+      11155111,
+      '0xto',
+    );
+    const secondTransaction = service.sendTransaction(
+      11155111,
+      '0xto',
+    );
+
+    await new Promise<void>((resolve) =>
+      setImmediate(resolve),
+    );
+    expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+
+    rejectFirstBroadcast(new Error('broadcast failed'));
+
+    await expect(firstTransaction).rejects.toThrow(
+      'broadcast failed',
+    );
+    await expect(secondTransaction).resolves.toEqual(
+      expect.objectContaining({ nonce: 2 }),
+    );
+    expect(mockSendTransaction).toHaveBeenCalledTimes(2);
   });
 
   it('rejects transaction when wallet cannot cover value and gas', async () => {
@@ -294,6 +406,7 @@ describe('SignerService', () => {
       type: 0,
       gasLimit: 25200n,
       gasPrice: 1n,
+      nonce: 1,
     });
   });
 
@@ -325,6 +438,7 @@ describe('SignerService', () => {
       type: 0,
       gasLimit: 25200n,
       gasPrice: 2n,
+      nonce: 1,
     });
   });
 
