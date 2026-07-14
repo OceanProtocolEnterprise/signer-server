@@ -30,6 +30,10 @@ export class SignerService implements OnModuleInit {
     number,
     ethers.JsonRpcProvider
   >();
+  private transactionQueues = new Map<
+    string,
+    Promise<unknown>
+  >();
   private signers = new Map<number, ManagedSigner>();
   private defaultWalletId: number;
   private defaultVaultSigner?: ManagedSigner;
@@ -184,6 +188,33 @@ export class SignerService implements OnModuleInit {
     return signer
       .connect(provider)
       .sendTransaction(txRequest);
+  }
+
+  private enqueueTransaction<T>(
+    chainId: number,
+    address: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const queueKey = `${chainId}:${address.toLowerCase()}`;
+    const previousTransaction =
+      this.transactionQueues.get(queueKey) ??
+      Promise.resolve();
+    const transaction = previousTransaction
+      .catch(() => undefined)
+      .then(operation);
+
+    this.transactionQueues.set(queueKey, transaction);
+
+    const clearQueue = () => {
+      if (
+        this.transactionQueues.get(queueKey) === transaction
+      ) {
+        this.transactionQueues.delete(queueKey);
+      }
+    };
+
+    void transaction.then(clearQueue, clearQueue);
+    return transaction;
   }
 
   private bumpFee(
@@ -415,10 +446,15 @@ export class SignerService implements OnModuleInit {
       legacyTransaction.gasPrice = bumpedFeeData.gasPrice;
     }
 
-    const tx = await this.send(
-      signer.signer,
-      provider,
-      legacyTransaction,
+    const tx = await this.enqueueTransaction(
+      chainId,
+      signer.address,
+      () =>
+        this.send(
+          signer.signer,
+          provider,
+          legacyTransaction,
+        ),
     );
 
     return this.waitAndReturn(tx);
