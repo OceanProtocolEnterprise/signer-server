@@ -73,11 +73,30 @@ Public routes can be marked with the `@Public()` decorator.
 
 # Environment Variables
 
-Create a `.env` file:
+Copy `.env.example` to `.env`, then configure one signer mode. The Compose files
+override `SIGNER_MODE`; direct Node.js deployments read it from `.env`.
+
+For environment-backed keys:
 
 ```env
-PRIVATE_KEYS=[{"id":1,"key":"0x..."}]
+SIGNER_MODE=local
+PRIVATE_KEYS=[{"walletId":1,"key":"0x..."}]
+```
 
+For OpenBao-backed keys:
+
+```env
+SIGNER_MODE=vault
+VAULT_URL=http://openbao:8200
+VAULT_TOKEN=<VAULT_TOKEN>
+VAULT_ETHEREUM_MOUNT=ethereum
+VAULT_KV_STORE_PATH=secret
+VAULT_TIMEOUT_MS=10000
+```
+
+Both modes require the shared service configuration:
+
+```env
 NODE_URI_MAP=[
   {
     "11155111": {
@@ -309,23 +328,33 @@ docker run \
 
 # Docker Compose
 
-Start service:
+Two Compose files are provided for the supported deployment variants. Both load
+shared configuration from `.env` and override `SIGNER_MODE` for their respective
+storage mode.
+
+Start the environment-backed signer:
 
 ```bash
-docker compose up --build
+docker compose -f docker-compose.local.yml pull
+docker compose -f docker-compose.local.yml up -d
 ```
 
-Stop service:
+Start the OpenBao-backed signer:
 
 ```bash
-docker compose down
+docker compose -f docker-compose.vault.yml pull
+docker compose -f docker-compose.vault.yml up -d
 ```
 
-View logs:
+Use the same file to view logs or stop a deployment:
 
 ```bash
-docker compose logs -f
+docker compose -f docker-compose.local.yml logs -f signer-server
+docker compose -f docker-compose.local.yml down
 ```
+
+See [Deployment](docs/deployment.md) for prerequisites, OpenBao networking, and
+configuration validation.
 
 ---
 
@@ -470,7 +499,8 @@ npm test
 npm run test:e2e
 npm run test:cov
 npm run build
-docker compose up --build
+docker compose -f docker-compose.local.yml config --quiet
+docker compose -f docker-compose.vault.yml config --quiet
 ```
 
 Everything should pass before merging.

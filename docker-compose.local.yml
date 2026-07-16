@@ -1,0 +1,14 @@
+services:
+  signer-server:
+    image: oceanenterprise/signer-server:latest
+    pull_policy: always
+    container_name: ocean-signer-server
+    ports:
+      - '${SIGNER_PORT:-8443}:3001'
+    env_file:
+      - .env
+    environment:
+      SIGNER_MODE: local
+    volumes:
+      - ./certs:/etc/ssl/certs:ro
+    restart: unless-stopped
