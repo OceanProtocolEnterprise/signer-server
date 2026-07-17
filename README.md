@@ -120,8 +120,9 @@ NODE_ENV=development
 
 `ALLOWED_ORIGINS` is optional. When unset, origin checks are disabled.
 When set, use an array of origins.
-Requests without a matching `Origin` header are rejected with `403`
-before JWT validation.
+Requests to protected routes without a matching `Origin` header are
+rejected with `403` before JWT validation. Routes marked with
+`@Public()`, including `/api/v1/health`, bypass origin and JWT checks.
 
 ---
 
