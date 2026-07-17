@@ -34,6 +34,16 @@ export class AuthentikGuard extends AuthGuard('jwt') {
   }
 
   canActivate(context: ExecutionContext) {
+    const isPublic =
+      this.reflector.getAllAndOverride<boolean>(
+        IS_PUBLIC_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+
+    if (isPublic) {
+      return true;
+    }
+
     const req = context
       .switchToHttp()
       .getRequest<Request>();
@@ -55,16 +65,6 @@ export class AuthentikGuard extends AuthGuard('jwt') {
           'Origin is not allowed',
         );
       }
-    }
-
-    const isPublic =
-      this.reflector.getAllAndOverride<boolean>(
-        IS_PUBLIC_KEY,
-        [context.getHandler(), context.getClass()],
-      );
-
-    if (isPublic) {
-      return true;
     }
 
     this.logger.log(
