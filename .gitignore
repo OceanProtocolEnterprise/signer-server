@@ -4,3 +4,4 @@ dist/
 *.log
 coverage/
 .DS_Store
+vault/secrets/private_keys

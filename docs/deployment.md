@@ -21,6 +21,8 @@ selected mode:
 cp .env.example .env
 ```
 
+## TODO: Table with env configurations for local and for vault, need 2 deployment docs
+
 The common required variables are `NODE_URI_MAP`, `AUTHENTIK_JWKS_URI`,
 `AUTHENTIK_ISSUER`, and `AUTHENTIK_AUDIENCE`. Set `SIGNER_PORT` to change the
 host port. The application always listens on port `3001` inside the container.

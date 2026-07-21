@@ -1,9 +1,41 @@
 services:
-  # TODO: Add and configure an OpenBao service for vault-backed deployments.
+  openbao:
+    build:
+      context: ./vault
+      dockerfile: Dockerfile
+    container_name: openbao
+    restart: unless-stopped
+    ports:
+      - '${OPENBAO_PORT:-8200}:8200'
+    environment:
+      PRIVATE_KEYS_FILE: /run/secrets/private_keys
+      PERSISTENT_PRIVATE_KEYS_FILE: /run/secrets/private_keys
+      # To use your own TLS certificate instead of the auto-generated self-signed one,
+      # uncomment and set these to the paths of your cert and key files inside the container.
+      # TLS_CERT_SOURCE: /path/to/tls.crt
+      # TLS_KEY_SOURCE: /path/to/tls.key
+    volumes:
+      - openbao-data:/bao/data
+      - openbao-keys:/vault/keys
+      - openbao-tls:/etc/openbao/tls
+      - ./vault/secrets/private_keys:/run/secrets/private_keys
+    healthcheck:
+      # Uses -tls-skip-verify because the cert is self-signed by default.
+      # If you supply a trusted CA cert, remove that flag.
+      test: ['CMD', 'bao', 'status', '-tls-skip-verify']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   signer-server:
     image: oceanenterprise/signer-server:latest
-    pull_policy: always
+    pull_policy: missing
     container_name: ocean-signer-server
+    restart: unless-stopped
+    depends_on:
+      openbao:
+        condition: service_healthy
     ports:
       - '${SIGNER_PORT:-8443}:3001'
     env_file:
@@ -12,4 +44,25 @@ services:
       SIGNER_MODE: vault
     volumes:
       - ./certs:/etc/ssl/certs:ro
-    restart: unless-stopped
+      - openbao-tls:/etc/openbao/tls:ro
+      - openbao-keys:/vault/keys:ro
+    command:
+      - sh
+      - -c
+      - |
+        echo "[signer-server] waiting for OpenBao TLS certificate..."
+        until [ -s /etc/openbao/tls/tls.crt ]; do
+          sleep 2
+        done
+        echo "[signer-server] waiting for OpenBao root token..."
+        until [ -s /vault/keys/root_token ]; do
+          sleep 2
+        done
+        export VAULT_TOKEN="$$(cat /vault/keys/root_token)"
+        export NODE_EXTRA_CA_CERTS=/etc/openbao/tls/tls.crt
+        echo "[signer-server] starting with VAULT_URL=$$VAULT_URL"
+        exec node dist/main.js
+volumes:
+  openbao-data:
+  openbao-keys:
+  openbao-tls:
