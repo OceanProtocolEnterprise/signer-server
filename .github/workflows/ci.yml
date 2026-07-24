@@ -168,7 +168,6 @@ jobs:
 
           echo "⏳ Waiting for signer-server..."
           TIMEOUT=60
-          # Health check endpoint is /api/v1/health (with API prefix)
           while ! curl -s http://localhost:8443/api/v1/health > /dev/null 2>&1; do
             if [ $TIMEOUT -le 0 ]; then
               echo "❌ signer-server startup timed out"
@@ -195,15 +194,13 @@ jobs:
           NODE_ENV: test
           NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
           PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
-          # Use HTTPS for Vault - TLS is enabled on OpenBAO
-          VAULT_URL: https://openbao:8200
+          # Use HTTP for Vault (same as the server's .env file)
+          VAULT_URL: http://localhost:8200
           VAULT_TOKEN: ${{ env.VAULT_TOKEN }}
           SIGNER_MODE: vault
           VAULT_ETHEREUM_MOUNT: ethereum
           VAULT_KV_STORE_PATH: secret
           VAULT_TIMEOUT_MS: 10000
-          # Trust the self-signed certificate from OpenBAO
-          NODE_EXTRA_CA_CERTS: docker-compose/vault/openbao/tls/tls.crt
           # Use existing GitHub secrets/vars
           CHAIN_ID: ${{ vars.CHAIN_ID || '11155111' }}
           ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
