@@ -109,7 +109,6 @@ jobs:
             cp .env.example .env
             echo "✅ .env created from .env.example"
           else
-            # Create minimal .env if .env.example doesn't exist
             echo "OPENBAO_PORT=8200" > .env
             echo "SIGNER_PORT=8443" >> .env
             echo "✅ Minimal .env created"
@@ -128,8 +127,6 @@ jobs:
           0x0000000000000000000000000000000000000000000000000000000000000005
           EOF
           echo "✅ Test private keys created"
-          echo "📄 Keys created:"
-          cat docker-compose/vault/openbao/secrets/private_keys
 
       - name: Start OpenBAO
         working-directory: docker-compose/vault
@@ -154,42 +151,14 @@ jobs:
 
           echo "✅ OpenBAO initialized successfully"
 
-          # Check plugin status
-          echo "🔍 Checking plugin registration..."
-          if docker exec openbao bao plugin list -format=json 2>/dev/null | grep -q secpsign; then
-            echo "✅ secpsign plugin already registered"
-          else
-            echo "⚠️ secpsign plugin not found in plugin list"
-            
-            # Check if plugin binary exists
-            if docker exec openbao test -f /opt/openbao/plugins/secpsign; then
-              echo "✅ Plugin binary exists at /opt/openbao/plugins/secpsign"
-              
-              # Try to register the plugin manually
-              echo "📝 Attempting to register secpsign plugin..."
-              SHA256=$(docker exec openbao sha256sum /opt/openbao/plugins/secpsign | awk '{print $1}')
-              echo "   SHA256: ${SHA256}"
-              
-              docker exec openbao bao plugin register \
-                -sha256="${SHA256}" \
-                -command=secpsign \
-                secret \
-                secpsign 2>&1 || echo "   Plugin registration attempt completed"
-            else
-              echo "❌ Plugin binary not found at /opt/openbao/plugins/secpsign"
-              echo "   Listing /opt/openbao/plugins/:"
-              docker exec openbao ls -la /opt/openbao/plugins/ 2>/dev/null || echo "   Directory not accessible"
-            fi
-          fi
-
           # Get root token
           ROOT_TOKEN=$(docker exec openbao cat /vault/keys/root_token)
           echo "VAULT_TOKEN=${ROOT_TOKEN}" >> $GITHUB_ENV
           echo "✅ Root token retrieved"
 
           # Verify accounts imported
-          echo "📋 Checking imported accounts:"
-          docker exec openbao /opt/openbao/scripts/manage-accounts.sh list || echo "   No accounts imported yet"
+          echo "📋 Imported accounts:"
+          docker exec openbao /opt/openbao/scripts/manage-accounts.sh list || true
 
       - name: Start signer-server with Vault mode
         working-directory: docker-compose/vault
@@ -199,7 +168,8 @@ jobs:
 
           echo "⏳ Waiting for signer-server..."
           TIMEOUT=60
-          while ! curl -s -k https://localhost:8443/health > /dev/null 2>&1; do
+          # Use HTTP for health check - the service runs HTTP internally
+          while ! curl -s http://localhost:8443/health > /dev/null 2>&1; do
             if [ $TIMEOUT -le 0 ]; then
               echo "❌ signer-server startup timed out"
               echo ""
@@ -216,29 +186,31 @@ jobs:
           done
           echo "✅ signer-server ready"
 
-          # Test health endpoint
-          echo "🔍 Health check:"
-          curl -s -k https://localhost:8443/health | jq . || echo "   Health check failed"
+          echo "🔍 Health check response:"
+          curl -s http://localhost:8443/health | jq . || echo "   Health check failed"
 
       - name: Run Vault E2E tests
         run: npm run test:e2e:vault
         env:
           NODE_ENV: test
-          VAULT_URL: https://localhost:8200
+          # Use HTTP for Vault - the container uses HTTPS internally but we access via HTTP port mapping
+          VAULT_URL: http://localhost:8200
           VAULT_TOKEN: ${{ env.VAULT_TOKEN }}
           SIGNER_MODE: vault
           VAULT_ETHEREUM_MOUNT: ethereum
           VAULT_KV_STORE_PATH: secret
           VAULT_TIMEOUT_MS: 10000
+          # Use the self-signed certificate for the signer-server to trust Vault
           NODE_EXTRA_CA_CERTS: docker-compose/vault/openbao/tls/tls.crt
-          CHAIN_ID: 11155111
-          ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL || 'https://eth-sepolia.g.alchemy.com/v2/demo' }}
+          # Use existing GitHub secrets/vars
+          CHAIN_ID: ${{ vars.CHAIN_ID || '11155111' }}
+          ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
           PORT: 3001
           UPSTREAM_IDP: ${{ vars.UPSTREAM_IDP || 'VM3 Partner Source' }}
-          AUTHENTIK_JWKS_URI: http://localhost:8080
-          AUTHENTIK_ISSUER: http://localhost:8080
-          AUTHENTIK_AUDIENCE: test-audience
-          JWT_TOKEN: ${{ secrets.JWT_TOKEN || 'test-jwt-token' }}
+          AUTHENTIK_JWKS_URI: ${{ vars.AUTHENTIK_JWKS_URI }}
+          AUTHENTIK_ISSUER: ${{ vars.AUTHENTIK_ISSUER }}
+          AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
+          JWT_TOKEN: ${{ secrets.JWT_TOKEN }}
           GITHUB_ACTIONS: true
 
       - name: Dump logs on failure
@@ -250,12 +222,6 @@ jobs:
           echo ""
           echo "========== SIGNER-SERVER LOGS =========="
           docker compose -f docker-compose.vault.yml logs signer-server
-          echo ""
-          echo "========== VAULT STATUS =========="
-          docker exec openbao bao status -tls-skip-verify || true
-          echo ""
-          echo "========== PLUGIN DIRECTORY =========="
-          docker exec openbao ls -la /opt/openbao/plugins/ || true
 
       - name: Cleanup
         if: always()
