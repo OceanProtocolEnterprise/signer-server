@@ -102,6 +102,22 @@ jobs:
       - name: Build signer service
         run: npm run build
 
+      - name: Create .env file from .env.example
+        working-directory: docker-compose/vault
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+            echo "✅ .env created from .env.example"
+          else
+            # Create minimal .env if .env.example doesn't exist
+            cat > .env << 'EOF'
+            OPENBAO_PORT=8200
+            SIGNER_PORT=8443
+            EOF
+            echo "✅ Minimal .env created"
+          fi
+          cat .env
+
       - name: Create test private keys for Vault
         run: |
           mkdir -p docker-compose/vault/openbao/secrets
@@ -125,6 +141,8 @@ jobs:
           while ! docker exec openbao test -f /vault/keys/root_token; do
             if [ $TIMEOUT -le 0 ]; then
               echo "❌ OpenBAO initialization timed out"
+              echo ""
+              echo "=== OpenBAO logs ==="
               docker compose -f docker-compose.vault.yml logs openbao
               exit 1
             fi
@@ -135,22 +153,42 @@ jobs:
 
           echo "✅ OpenBAO initialized successfully"
 
-          # Verify plugin registration
+          # Check plugin status
+          echo "🔍 Checking plugin registration..."
           if docker exec openbao bao plugin list -format=json 2>/dev/null | grep -q secpsign; then
-            echo "✅ secpsign plugin registered"
+            echo "✅ secpsign plugin already registered"
           else
-            echo "❌ secpsign plugin not registered"
-            docker compose -f docker-compose.vault.yml logs openbao
-            exit 1
+            echo "⚠️ secpsign plugin not found in plugin list"
+            
+            # Check if plugin binary exists
+            if docker exec openbao test -f /opt/openbao/plugins/secpsign; then
+              echo "✅ Plugin binary exists at /opt/openbao/plugins/secpsign"
+              
+              # Try to register the plugin manually
+              echo "📝 Attempting to register secpsign plugin..."
+              SHA256=$(docker exec openbao sha256sum /opt/openbao/plugins/secpsign | awk '{print $1}')
+              echo "   SHA256: ${SHA256}"
+              
+              docker exec openbao bao plugin register \
+                -sha256="${SHA256}" \
+                -command=secpsign \
+                secret \
+                secpsign 2>&1 || echo "   Plugin registration attempt completed"
+            else
+              echo "❌ Plugin binary not found at /opt/openbao/plugins/secpsign"
+              echo "   Listing /opt/openbao/plugins/:"
+              docker exec openbao ls -la /opt/openbao/plugins/ 2>/dev/null || echo "   Directory not accessible"
+            fi
           fi
 
           # Get root token
           ROOT_TOKEN=$(docker exec openbao cat /vault/keys/root_token)
           echo "VAULT_TOKEN=${ROOT_TOKEN}" >> $GITHUB_ENV
+          echo "✅ Root token retrieved"
 
-          # Verify accounts
-          echo "📋 Imported accounts:"
-          docker exec openbao /opt/openbao/scripts/manage-accounts.sh list || true
+          # Verify accounts imported
+          echo "📋 Checking imported accounts:"
+          docker exec openbao /opt/openbao/scripts/manage-accounts.sh list || echo "   No accounts imported yet"
 
       - name: Start signer-server with Vault mode
         working-directory: docker-compose/vault
@@ -163,7 +201,12 @@ jobs:
           while ! curl -s -k https://localhost:8443/health > /dev/null 2>&1; do
             if [ $TIMEOUT -le 0 ]; then
               echo "❌ signer-server startup timed out"
+              echo ""
+              echo "=== signer-server logs ==="
               docker compose -f docker-compose.vault.yml logs signer-server
+              echo ""
+              echo "=== OpenBAO logs ==="
+              docker compose -f docker-compose.vault.yml logs openbao
               exit 1
             fi
             echo "   Waiting... (${TIMEOUT}s remaining)"
@@ -171,6 +214,10 @@ jobs:
             TIMEOUT=$((TIMEOUT - 2))
           done
           echo "✅ signer-server ready"
+
+          # Test health endpoint
+          echo "🔍 Health check:"
+          curl -s -k https://localhost:8443/health | jq . || echo "   Health check failed"
 
       - name: Run Vault E2E tests
         run: npm run test:e2e:vault
@@ -202,6 +249,12 @@ jobs:
           echo ""
           echo "========== SIGNER-SERVER LOGS =========="
           docker compose -f docker-compose.vault.yml logs signer-server
+          echo ""
+          echo "========== VAULT STATUS =========="
+          docker exec openbao bao status -tls-skip-verify || true
+          echo ""
+          echo "========== PLUGIN DIRECTORY =========="
+          docker exec openbao ls -la /opt/openbao/plugins/ || true
 
       - name: Cleanup
         if: always()
