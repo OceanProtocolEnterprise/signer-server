@@ -110,12 +110,11 @@ jobs:
             echo "✅ .env created from .env.example"
           else
             # Create minimal .env if .env.example doesn't exist
-            cat > .env << 'EOF'
-            OPENBAO_PORT=8200
-            SIGNER_PORT=8443
-            EOF
+            echo "OPENBAO_PORT=8200" > .env
+            echo "SIGNER_PORT=8443" >> .env
             echo "✅ Minimal .env created"
           fi
+          echo "📄 .env contents:"
           cat .env
 
       - name: Create test private keys for Vault
@@ -129,6 +128,8 @@ jobs:
           0x0000000000000000000000000000000000000000000000000000000000000005
           EOF
           echo "✅ Test private keys created"
+          echo "📄 Keys created:"
+          cat docker-compose/vault/openbao/secrets/private_keys
 
       - name: Start OpenBAO
         working-directory: docker-compose/vault
