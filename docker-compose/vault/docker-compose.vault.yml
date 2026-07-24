@@ -1,7 +1,7 @@
 services:
   openbao:
     build:
-      context: ./vault
+      context: ./openbao
       dockerfile: Dockerfile
     container_name: openbao
     restart: unless-stopped
@@ -18,7 +18,7 @@ services:
       - openbao-data:/bao/data
       - openbao-keys:/vault/keys
       - openbao-tls:/etc/openbao/tls
-      - ./vault/secrets/private_keys:/run/secrets/private_keys
+      - ./openbao/secrets/private_keys:/run/secrets/private_keys
     healthcheck:
       # Uses -tls-skip-verify because the cert is self-signed by default.
       # If you supply a trusted CA cert, remove that flag.
@@ -33,6 +33,9 @@ services:
     pull_policy: missing
     container_name: ocean-signer-server
     restart: unless-stopped
+    build:
+      context: ../../
+      dockerfile: Dockerfile
     depends_on:
       openbao:
         condition: service_healthy

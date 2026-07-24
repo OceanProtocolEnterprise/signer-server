@@ -4,4 +4,4 @@ dist/
 *.log
 coverage/
 .DS_Store
-vault/secrets/private_keys
+docker-compose/vault/openbao/secrets/private_keys
