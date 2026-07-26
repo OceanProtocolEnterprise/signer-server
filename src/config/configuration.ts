@@ -237,7 +237,6 @@ export default () => {
     ),
     port: parseInt(process.env.PORT || '3001', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
-    apiKeyFallback: process.env.API_KEY_FALLBACK,
     tls: {
       certPath: process.env.HTTP_CERT_PATH,
       keyPath: process.env.HTTP_KEY_PATH,
