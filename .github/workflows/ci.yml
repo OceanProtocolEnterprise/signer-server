@@ -132,7 +132,7 @@ jobs:
         working-directory: docker-compose/vault
         run: |
           echo "🚀 Starting OpenBAO container..."
-          docker compose -f docker-compose.vault.yml up -d openbao
+          docker compose -f docker-compose.yml up -d openbao
 
           echo "⏳ Waiting for OpenBAO initialization..."
           TIMEOUT=180
@@ -141,7 +141,7 @@ jobs:
               echo "❌ OpenBAO initialization timed out"
               echo ""
               echo "=== OpenBAO logs ==="
-              docker compose -f docker-compose.vault.yml logs openbao
+              docker compose -f docker-compose.yml logs openbao
               exit 1
             fi
             echo "   Waiting... (${TIMEOUT}s remaining)"
