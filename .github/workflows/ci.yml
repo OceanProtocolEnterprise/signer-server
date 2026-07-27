@@ -152,12 +152,9 @@ jobs:
           echo "✅ OpenBAO initialized successfully"
 
           # Get root token
-          ROOT_TOKEN=$(docker exec openbao cat /vault/keys/root_token)
-          echo "VAULT_TOKEN=$ROOT_TOKEN" >> $GITHUB_ENV
-          echo "ROOT_TOKEN=$ROOT_TOKEN"
+          VAULT_TOKEN=$(docker exec openbao cat /vault/keys/root_token)
           echo "VAULT_TOKEN=$VAULT_TOKEN"
-          echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV 
-          echo "✅ Root token retrieved"
+          echo "✅ VAULT_TOKEN token retrieved"
 
           # Verify accounts imported
           echo "📋 Imported accounts:"
