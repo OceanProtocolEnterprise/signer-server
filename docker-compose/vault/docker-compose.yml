@@ -21,9 +21,13 @@ services:
       - openbao-tls:/etc/openbao/tls
       - ./openbao/secrets/private_keys:/run/secrets/private_keys
     healthcheck:
-      # Uses -tls-skip-verify because the cert is self-signed by default.
-      # If you supply a trusted CA cert, remove that flag.
-      test: ['CMD', 'bao', 'status', '-tls-skip-verify']
+      test:
+        [
+          'CMD',
+          'sh',
+          '-c',
+          'if [ "${OPENBAO_TLS_DISABLE:-false}" = "true" ]; then bao status; else bao status -tls-skip-verify; fi',
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -46,6 +50,7 @@ services:
       - .env
     environment:
       SIGNER_MODE: vault
+      OPENBAO_TLS_DISABLE: ${OPENBAO_TLS_DISABLE:-false}
     volumes:
       - ./certs:/etc/ssl/certs:ro
       - openbao-tls:/etc/openbao/tls:ro
@@ -55,16 +60,14 @@ services:
       - -c
       - |
         echo "[signer-server] waiting for OpenBao to be ready..."
-        # Wait for OpenBao to be healthy (handled by depends_on)
         echo "[signer-server] waiting for OpenBao root token..."
         until [ -s /vault/keys/root_token ]; do
           sleep 2
         done
-        # Get token from mounted volume
         export VAULT_TOKEN="$$(cat /vault/keys/root_token)"
-        # If TLS is disabled, don't set NODE_EXTRA_CA_CERTS
         if [ "${OPENBAO_TLS_DISABLE:-false}" = "true" ]; then
           echo "[signer-server] TLS disabled, using HTTP"
+          export NODE_EXTRA_CA_CERTS=""
         else
           echo "[signer-server] TLS enabled, using HTTPS with CA certs"
           export NODE_EXTRA_CA_CERTS=/etc/openbao/tls/tls.crt
