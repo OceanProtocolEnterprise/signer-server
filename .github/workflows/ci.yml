@@ -120,6 +120,8 @@ jobs:
             echo "SIGNER_PORT=8443" >> .env
             echo "✅ Minimal .env created"
           fi
+          # Force HTTP for Vault connection
+          sed -i 's|VAULT_URL=.*|VAULT_URL=http://openbao:8200|' .env
           echo "📄 .env contents:"
           cat .env
 
@@ -214,8 +216,8 @@ jobs:
           NODE_ENV: test
           NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
           PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
-          # Use HTTPS for Vault (OpenBAO uses HTTPS internally)
-          VAULT_URL: https://localhost:8200
+          # Use HTTP for Vault (same as the signer-server uses internally)
+          VAULT_URL: http://localhost:8200
           VAULT_TOKEN: ${{ env.VAULT_TOKEN }}
           SIGNER_MODE: vault
           VAULT_ETHEREUM_MOUNT: ethereum
