@@ -151,10 +151,13 @@ jobs:
 
           echo "✅ OpenBAO initialized successfully"
 
-          # Get root token
+          # Get root token and save to GITHUB_ENV
           VAULT_TOKEN=$(docker exec openbao cat /vault/keys/root_token)
-          echo "VAULT_TOKEN=$VAULT_TOKEN"
-          echo "✅ VAULT_TOKEN token retrieved"
+          echo "VAULT_TOKEN=${VAULT_TOKEN}" >> $GITHUB_ENV
+          echo "VAULT_TOKEN=${VAULT_TOKEN:0:10}... saved to GITHUB_ENV"
+
+          # Also export for current step
+          echo "VAULT_TOKEN=${VAULT_TOKEN}"
 
           # Verify accounts imported
           echo "📋 Imported accounts:"
