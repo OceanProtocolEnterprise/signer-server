@@ -10,7 +10,6 @@ services:
     environment:
       PRIVATE_KEYS_FILE: /run/secrets/private_keys
       PERSISTENT_PRIVATE_KEYS_FILE: /run/secrets/private_keys
-      OPENBAO_TLS_DISABLE: ${OPENBAO_TLS_DISABLE:-false}
       # To use your own TLS certificate instead of the auto-generated self-signed one,
       # uncomment and set these to the paths of your cert and key files inside the container.
       # TLS_CERT_SOURCE: /path/to/tls.crt
@@ -21,18 +20,13 @@ services:
       - openbao-tls:/etc/openbao/tls
       - ./openbao/secrets/private_keys:/run/secrets/private_keys
     healthcheck:
-      # Use HTTP when TLS is disabled, HTTPS with skip verify when enabled
-      test:
-        [
-          'CMD',
-          'sh',
-          '-c',
-          'if [ "${OPENBAO_TLS_DISABLE:-false}" = "true" ]; then bao status; else bao status -tls-skip-verify; fi',
-        ]
+      # Uses -tls-skip-verify because the cert is self-signed by default.
+      # If you supply a trusted CA cert, remove that flag.
+      test: ['CMD', 'bao', 'status', '-tls-skip-verify']
       interval: 10s
       timeout: 5s
-      retries: 30
-      start_period: 30s
+      retries: 12
+      start_period: 20s
 
   signer-server:
     image: oceanenterprise/signer-server:latest
@@ -51,7 +45,6 @@ services:
       - .env
     environment:
       SIGNER_MODE: vault
-      OPENBAO_TLS_DISABLE: ${OPENBAO_TLS_DISABLE:-false}
     volumes:
       - ./certs:/etc/ssl/certs:ro
       - openbao-tls:/etc/openbao/tls:ro
@@ -60,19 +53,16 @@ services:
       - sh
       - -c
       - |
-        echo "[signer-server] waiting for OpenBao to be ready..."
+        echo "[signer-server] waiting for OpenBao TLS certificate..."
+        until [ -s /etc/openbao/tls/tls.crt ]; do
+          sleep 2
+        done
         echo "[signer-server] waiting for OpenBao root token..."
         until [ -s /vault/keys/root_token ]; do
           sleep 2
         done
         export VAULT_TOKEN="$$(cat /vault/keys/root_token)"
-        if [ "${OPENBAO_TLS_DISABLE:-false}" = "true" ]; then
-          echo "[signer-server] TLS disabled, using HTTP"
-          export NODE_EXTRA_CA_CERTS=""
-        else
-          echo "[signer-server] TLS enabled, using HTTPS with CA certs"
-          export NODE_EXTRA_CA_CERTS=/etc/openbao/tls/tls.crt
-        fi
+        export NODE_EXTRA_CA_CERTS=/etc/openbao/tls/tls.crt
         echo "[signer-server] starting with VAULT_URL=$$VAULT_URL"
         exec node dist/main.js
 volumes:

@@ -80,14 +80,8 @@ WORK_DIR="/vault/keys/tmp"
 
 mkdir -p "$WORK_DIR"
 
-# Determine if TLS is disabled
-if [ "${OPENBAO_TLS_DISABLE:-false}" = "true" ]; then
-  export BAO_ADDR="${BAO_ADDR:-http://127.0.0.1:8200}"
-  export BAO_CACERT=""
-else
-  export BAO_ADDR="${BAO_ADDR:-https://127.0.0.1:8200}"
-  export BAO_CACERT="${BAO_CACERT:-$TLS_CERT}"
-fi
+export BAO_ADDR="${BAO_ADDR:-https://127.0.0.1:8200}"
+export BAO_CACERT="${BAO_CACERT:-$TLS_CERT}"
 
 if [ -z "${BAO_TOKEN:-}" ] && [ -f "$ROOT_TOKEN_FILE" ]; then
   export BAO_TOKEN
