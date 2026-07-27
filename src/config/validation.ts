@@ -65,10 +65,6 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   HTTP_KEY_PATH?: string;
-
-  @IsOptional()
-  @IsString()
-  API_KEY_FALLBACK?: string;
 }
 
 export function validate(config: Record<string, unknown>) {
