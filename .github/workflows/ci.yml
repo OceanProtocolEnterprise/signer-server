@@ -120,7 +120,7 @@ jobs:
             echo "SIGNER_PORT=8443" >> .env
             echo "✅ Minimal .env created"
           fi
-          # Force HTTP for Vault connection
+          # Force HTTP for Vault connection in CI
           sed -i 's|VAULT_URL=.*|VAULT_URL=http://openbao:8200|' .env
           echo "📄 .env contents:"
           cat .env
@@ -137,14 +137,14 @@ jobs:
           EOF
           echo "✅ Test private keys created"
 
-      - name: Start OpenBAO with retry
+      - name: Start OpenBAO with TLS disabled for CI
         working-directory: docker-compose/vault
         run: |
-          echo "🚀 Starting OpenBAO container..."
+          echo "🚀 Starting OpenBAO container with TLS disabled..."
           # Retry up to 3 times if Docker pull fails
           for i in 1 2 3; do
             echo "Attempt $i to build and start OpenBAO..."
-            if docker compose -f docker-compose.yml up -d openbao; then
+            if OPENBAO_TLS_DISABLE=true docker compose -f docker-compose.yml up -d openbao; then
               echo "✅ OpenBAO started successfully"
               break
             fi
@@ -186,7 +186,7 @@ jobs:
         working-directory: docker-compose/vault
         run: |
           echo "🚀 Starting signer-server..."
-          docker compose -f docker-compose.yml up -d signer-server
+          OPENBAO_TLS_DISABLE=true docker compose -f docker-compose.yml up -d signer-server
 
           echo "⏳ Waiting for signer-server..."
           TIMEOUT=60
@@ -216,7 +216,7 @@ jobs:
           NODE_ENV: test
           NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
           PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
-          # Use HTTP for Vault (same as the signer-server uses internally)
+          # Use HTTP for Vault (TLS is disabled in CI)
           VAULT_URL: http://localhost:8200
           VAULT_TOKEN: ${{ env.VAULT_TOKEN }}
           SIGNER_MODE: vault

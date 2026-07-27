@@ -10,6 +10,7 @@ services:
     environment:
       PRIVATE_KEYS_FILE: /run/secrets/private_keys
       PERSISTENT_PRIVATE_KEYS_FILE: /run/secrets/private_keys
+      OPENBAO_TLS_DISABLE: ${OPENBAO_TLS_DISABLE:-false}
       # To use your own TLS certificate instead of the auto-generated self-signed one,
       # uncomment and set these to the paths of your cert and key files inside the container.
       # TLS_CERT_SOURCE: /path/to/tls.crt
@@ -53,16 +54,21 @@ services:
       - sh
       - -c
       - |
-        echo "[signer-server] waiting for OpenBao TLS certificate..."
-        until [ -s /etc/openbao/tls/tls.crt ]; do
-          sleep 2
-        done
+        echo "[signer-server] waiting for OpenBao to be ready..."
+        # Wait for OpenBao to be healthy (handled by depends_on)
         echo "[signer-server] waiting for OpenBao root token..."
         until [ -s /vault/keys/root_token ]; do
           sleep 2
         done
+        # Get token from mounted volume
         export VAULT_TOKEN="$$(cat /vault/keys/root_token)"
-        export NODE_EXTRA_CA_CERTS=/etc/openbao/tls/tls.crt
+        # If TLS is disabled, don't set NODE_EXTRA_CA_CERTS
+        if [ "${OPENBAO_TLS_DISABLE:-false}" = "true" ]; then
+          echo "[signer-server] TLS disabled, using HTTP"
+        else
+          echo "[signer-server] TLS enabled, using HTTPS with CA certs"
+          export NODE_EXTRA_CA_CERTS=/etc/openbao/tls/tls.crt
+        fi
         echo "[signer-server] starting with VAULT_URL=$$VAULT_URL"
         exec node dist/main.js
 volumes:
