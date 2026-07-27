@@ -21,6 +21,7 @@ services:
       - openbao-tls:/etc/openbao/tls
       - ./openbao/secrets/private_keys:/run/secrets/private_keys
     healthcheck:
+      # Use HTTP when TLS is disabled, HTTPS with skip verify when enabled
       test:
         [
           'CMD',
@@ -30,8 +31,8 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 20s
+      retries: 30
+      start_period: 30s
 
   signer-server:
     image: oceanenterprise/signer-server:latest
