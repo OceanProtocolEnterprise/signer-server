@@ -214,8 +214,8 @@ jobs:
           NODE_ENV: test
           NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
           PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
-          # Use HTTP for Vault (OpenBAO uses HTTP internally)
-          VAULT_URL: http://localhost:8200
+          # Use HTTPS for Vault (OpenBAO uses HTTPS internally)
+          VAULT_URL: https://localhost:8200
           VAULT_TOKEN: ${{ env.VAULT_TOKEN }}
           SIGNER_MODE: vault
           VAULT_ETHEREUM_MOUNT: ethereum
