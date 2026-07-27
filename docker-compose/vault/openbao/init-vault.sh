@@ -22,11 +22,18 @@ ROOT_TOKEN_FILE="/vault/keys/root_token"
 PLUGIN_PATH="/opt/openbao/plugins/secpsign"
 TLS_CERT="/etc/openbao/tls/tls.crt"
 
-export BAO_ADDR="${BAO_ADDR:-https://127.0.0.1:8200}"
-export BAO_CACERT="${BAO_CACERT:-$TLS_CERT}"
+# Determine if TLS is disabled
+if [ "${OPENBAO_TLS_DISABLE:-false}" = "true" ]; then
+  export BAO_ADDR="${BAO_ADDR:-http://127.0.0.1:8200}"
+  export BAO_CACERT=""
+  info "TLS is disabled, using HTTP"
+else
+  export BAO_ADDR="${BAO_ADDR:-https://127.0.0.1:8200}"
+  export BAO_CACERT="${BAO_CACERT:-$TLS_CERT}"
+  info "TLS is enabled, using HTTPS"
+fi
 
-#Wait for OpenBao API 
-
+# Wait for OpenBao API
 info "waiting for OpenBao API to become available  addr=$BAO_ADDR"
 
 until bao status -format=json 2>/dev/null | jq -e 'has("initialized")' >/dev/null 2>&1; do
@@ -35,8 +42,7 @@ done
 
 info "OpenBao API is up"
 
-#Init
-
+# Init
 STATUS_JSON="$(bao status -format=json 2>/dev/null || true)"
 INITIALIZED="$(echo "$STATUS_JSON" | jq -r '.initialized // false')"
 
@@ -57,8 +63,7 @@ if [ ! -f "$INIT_FILE" ]; then
   exit 1
 fi
 
-##Unseal
-
+# Unseal
 SEALED="$(bao status -format=json | jq -r '.sealed')"
 
 if [ "$SEALED" = "true" ]; then
@@ -84,8 +89,7 @@ BAO_TOKEN="$(cat "$ROOT_TOKEN_FILE")"
 
 info "vault is unsealed and ready"
 
-#Register secpsign plugin 
-
+# Register secpsign plugin
 if [ ! -f "$PLUGIN_PATH" ]; then
   error "plugin binary not found at $PLUGIN_PATH — cannot continue"
   exit 1
@@ -100,8 +104,7 @@ bao plugin register \
   secret \
   secpsign || true
 
-#Enable secrets engines
-
+# Enable secrets engines
 if ! bao secrets list -format=json | jq -e 'has("ethereum/")' >/dev/null; then
   info "enabling ethereum secrets engine  path=ethereum  plugin=secpsign"
   bao secrets enable -path=ethereum -plugin-name=secpsign plugin
@@ -118,8 +121,7 @@ else
   info "KV secrets engine already enabled — skipping"
 fi
 
-#Import startup accounts
-
+# Import startup accounts
 PRIVATE_KEYS_FILE="${PRIVATE_KEYS_FILE:-/run/secrets/private_keys}"
 PERSISTENT_PRIVATE_KEYS_FILE="${PERSISTENT_PRIVATE_KEYS_FILE:-/run/secrets/private_keys}"
 
