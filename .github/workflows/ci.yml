@@ -142,7 +142,7 @@ jobs:
           # Retry up to 3 times if Docker pull fails
           for i in 1 2 3; do
             echo "Attempt $i to build and start OpenBAO..."
-            if docker compose -f docker-compose.vault.yml up -d openbao; then
+            if docker compose -f docker-compose.yml up -d openbao; then
               echo "✅ OpenBAO started successfully"
               break
             fi
@@ -161,7 +161,7 @@ jobs:
               echo "❌ OpenBAO initialization timed out"
               echo ""
               echo "=== OpenBAO logs ==="
-              docker compose -f docker-compose.vault.yml logs openbao
+              docker compose -f docker-compose.yml logs openbao
               exit 1
             fi
             echo "   Waiting... (${TIMEOUT}s remaining)"
@@ -184,7 +184,7 @@ jobs:
         working-directory: docker-compose/vault
         run: |
           echo "🚀 Starting signer-server..."
-          docker compose -f docker-compose.vault.yml up -d signer-server
+          docker compose -f docker-compose.yml up -d signer-server
 
           echo "⏳ Waiting for signer-server..."
           TIMEOUT=60
@@ -193,10 +193,10 @@ jobs:
               echo "❌ signer-server startup timed out"
               echo ""
               echo "=== signer-server logs ==="
-              docker compose -f docker-compose.vault.yml logs signer-server
+              docker compose -f docker-compose.yml logs signer-server
               echo ""
               echo "=== OpenBAO logs ==="
-              docker compose -f docker-compose.vault.yml logs openbao
+              docker compose -f docker-compose.yml logs openbao
               exit 1
             fi
             echo "   Waiting... (${TIMEOUT}s remaining)"
@@ -237,10 +237,10 @@ jobs:
         working-directory: docker-compose/vault
         run: |
           echo "========== OPENBAO LOGS =========="
-          docker compose -f docker-compose.vault.yml logs openbao
+          docker compose -f docker-compose.yml logs openbao
           echo ""
           echo "========== SIGNER-SERVER LOGS =========="
-          docker compose -f docker-compose.vault.yml logs signer-server
+          docker compose -f docker-compose.yml logs signer-server
           echo ""
           echo "========== VAULT_TOKEN from env =========="
           echo "VAULT_TOKEN: ${VAULT_TOKEN:0:10}..."
@@ -249,4 +249,4 @@ jobs:
         if: always()
         working-directory: docker-compose/vault
         run: |
-          docker compose -f docker-compose.vault.yml down -v
+          docker compose -f docker-compose.yml down -v
