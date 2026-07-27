@@ -155,8 +155,6 @@ jobs:
           ROOT_TOKEN=$(docker exec openbao cat /vault/keys/root_token)
           echo "VAULT_TOKEN=${ROOT_TOKEN}" >> $GITHUB_ENV
           echo ${ROOT_TOKEN}
-          echo ${{ vars.VAULT_TOKEN }} 
-          echo ${{ secrets.VAULT_TOKEN }} 
           echo ${{ env.VAULT_TOKEN }} 
           echo "✅ Root token retrieved"
 
