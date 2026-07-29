@@ -136,3 +136,4 @@ PERSISTENT_PRIVATE_KEYS_FILE="$PERSISTENT_PRIVATE_KEYS_FILE" \
 END_TS="$(date +%s)"
 DURATION="$((END_TS - START_TS))"
 info "initialisation complete  duration=${DURATION}s"
+

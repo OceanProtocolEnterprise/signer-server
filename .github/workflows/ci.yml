@@ -6,8 +6,6 @@ on:
     branches:
       - main
       - develop
-      - feat/**
-      - feat/*
 
 jobs:
   test:
@@ -73,3 +71,172 @@ jobs:
 
       - name: Coverage
         run: npm run test:cov
+
+  test-vault:
+    runs-on: ubuntu-latest
+    needs: test
+    if: always() && !cancelled() && needs.test.result == 'success'
+
+    strategy:
+      matrix:
+        node-version: [22]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build signer service
+        run: npm run build
+
+      - name: Create .env file from .env.example
+        working-directory: docker-compose/vault
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+            echo ".env created from .env.example"
+          else
+            echo "OPENBAO_PORT=8200" > .env
+            echo "SIGNER_PORT=8443" >> .env
+            echo "Minimal .env created"
+          fi
+          echo ".env contents:"
+          cat .env
+
+      - name: Create test private keys for Vault
+        run: |
+          mkdir -p docker-compose/vault/openbao/secrets
+          cat > docker-compose/vault/openbao/secrets/private_keys << 'EOF'
+          0x0000000000000000000000000000000000000000000000000000000000000001
+          0x0000000000000000000000000000000000000000000000000000000000000002
+          0x0000000000000000000000000000000000000000000000000000000000000003
+          0x0000000000000000000000000000000000000000000000000000000000000004
+          0x0000000000000000000000000000000000000000000000000000000000000005
+          EOF
+          echo "Test private keys created"
+
+      - name: Start OpenBAO
+        working-directory: docker-compose/vault
+        run: |
+          echo "Starting OpenBAO container..."
+          for i in 1 2 3; do
+            echo "Attempt $i to build and start OpenBAO..."
+            if docker compose -f docker-compose.yml up -d openbao; then
+              echo "OpenBAO started successfully"
+              break
+            fi
+            if [ $i -eq 3 ]; then
+              echo "Failed to start OpenBAO after 3 attempts"
+              exit 1
+            fi
+            echo "Retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "Waiting for OpenBAO initialization..."
+          TIMEOUT=180
+          while ! docker exec openbao test -f /vault/keys/root_token; do
+            if [ $TIMEOUT -le 0 ]; then
+              echo "OpenBAO initialization timed out"
+              echo ""
+              echo "=== OpenBAO logs ==="
+              docker compose -f docker-compose.yml logs openbao
+              exit 1
+            fi
+            echo "   Waiting... (${TIMEOUT}s remaining)"
+            sleep 5
+            TIMEOUT=$((TIMEOUT - 5))
+          done
+
+          echo "OpenBAO initialized successfully"
+
+          VAULT_TOKEN=$(docker exec openbao cat /vault/keys/root_token)
+          echo "VAULT_TOKEN=${VAULT_TOKEN}" >> $GITHUB_ENV
+          echo "VAULT_TOKEN=${VAULT_TOKEN:0:10}... saved to GITHUB_ENV"
+
+          echo "Imported accounts:"
+          docker exec openbao /opt/openbao/scripts/manage-accounts.sh list || true
+
+      - name: Start signer-server with Vault mode
+        working-directory: docker-compose/vault
+        run: |
+          echo "Starting signer-server..."
+          docker compose -f docker-compose.yml up -d signer-server
+
+          echo "Waiting for signer-server..."
+          TIMEOUT=60
+          while ! curl -s http://localhost:8443/api/v1/health > /dev/null 2>&1; do
+            if [ $TIMEOUT -le 0 ]; then
+              echo "signer-server startup timed out"
+              echo ""
+              echo "=== signer-server logs ==="
+              docker compose -f docker-compose.yml logs signer-server
+              echo ""
+              echo "=== OpenBAO logs ==="
+              docker compose -f docker-compose.yml logs openbao
+              exit 1
+            fi
+            echo "   Waiting... (${TIMEOUT}s remaining)"
+            sleep 2
+            TIMEOUT=$((TIMEOUT - 2))
+          done
+          echo "signer-server ready"
+
+          echo "Health check response:"
+          curl -s http://localhost:8443/api/v1/health | jq . || echo "   Health check failed"
+
+      - name: Run Vault E2E tests
+        run: npm run test:e2e:vault
+        env:
+          NODE_ENV: test
+          NODE_URI_MAP: ${{ secrets.NODE_URI_MAP }}
+          PRIVATE_KEYS: ${{ secrets.PRIVATE_KEYS }}
+          VAULT_URL: https://localhost:8200
+          VAULT_TOKEN: ${{ env.VAULT_TOKEN }}
+          SIGNER_MODE: vault
+          VAULT_ETHEREUM_MOUNT: ethereum
+          VAULT_KV_STORE_PATH: secret
+          VAULT_TIMEOUT_MS: 10000
+          NODE_TLS_REJECT_UNAUTHORIZED: 0
+          CHAIN_ID: ${{ vars.CHAIN_ID || '11155111' }}
+          ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
+          PORT: 3001
+          UPSTREAM_IDP: ${{ vars.UPSTREAM_IDP || 'VM3 Partner Source' }}
+          AUTHENTIK_JWKS_URI: ${{ vars.AUTHENTIK_JWKS_URI }}
+          AUTHENTIK_ISSUER: ${{ vars.AUTHENTIK_ISSUER }}
+          AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
+          JWT_TOKEN: ${{ secrets.JWT_TOKEN }}
+          GITHUB_ACTIONS: true
+
+      - name: Dump logs on failure
+        if: failure()
+        working-directory: docker-compose/vault
+        run: |
+          echo "========== OPENBAO LOGS =========="
+          docker compose -f docker-compose.yml logs openbao
+          echo ""
+          echo "========== SIGNER-SERVER LOGS =========="
+          docker compose -f docker-compose.yml logs signer-server
+          echo ""
+          echo "========== VAULT_TOKEN from env =========="
+          echo "VAULT_TOKEN: ${VAULT_TOKEN:0:10}..."
+
+      - name: Cleanup
+        if: always()
+        working-directory: docker-compose/vault
+        run: |
+          docker compose -f docker-compose.yml down -v
