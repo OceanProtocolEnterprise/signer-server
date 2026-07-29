@@ -49,7 +49,7 @@ jobs:
           AUTHENTIK_JWKS_URI: ${{ vars.AUTHENTIK_JWKS_URI }}
           AUTHENTIK_ISSUER: ${{ vars.AUTHENTIK_ISSUER }}
           AUTHENTIK_AUDIENCE: ${{ vars.AUTHENTIK_AUDIENCE }}
-          CHAIN_ID: ${{ vars.CHINA_ID }}
+          CHAIN_ID: ${{ vars.CHAIN_ID }}
           ETHEREUM_RPC_URL: ${{ vars.ETHEREUM_RPC_URL }}
           SIGNER_MODE: local
           PORT: 3001
