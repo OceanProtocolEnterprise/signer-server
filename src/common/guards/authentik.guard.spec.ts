@@ -29,10 +29,11 @@ describe('AuthentikGuard origin checks', () => {
 
   const createGuard = (
     allowedOrigins: string[] = [],
+    isPublic = true,
   ): AuthentikGuard =>
     new AuthentikGuard(
       {
-        getAllAndOverride: jest.fn(() => true),
+        getAllAndOverride: jest.fn(() => isPublic),
       } as unknown as Reflector,
       {
         get: jest.fn((key: string) =>
@@ -43,40 +44,46 @@ describe('AuthentikGuard origin checks', () => {
       } as Pick<ConfigService, 'get'> as ConfigService,
     );
 
-  it('does not check origin when ALLOWED_ORIGINS is unset', () => {
+  it('allows public routes when ALLOWED_ORIGINS is unset', () => {
     const guard = createGuard();
 
     expect(guard.canActivate(createContext())).toBe(true);
   });
 
-  it('allows matching origins', () => {
+  it('allows public routes without an origin when allowed origins are configured', () => {
+    const guard = createGuard([
+      'https://wallet-dev-stage.oceanenterprise.io',
+    ]);
+
+    expect(guard.canActivate(createContext())).toBe(true);
+  });
+
+  it('allows public routes from disallowed origins', () => {
     const guard = createGuard([
       'https://wallet-dev-stage.oceanenterprise.io',
     ]);
 
     expect(
-      guard.canActivate(
-        createContext(
-          'https://wallet-dev-stage.oceanenterprise.io',
-        ),
-      ),
+      guard.canActivate(createContext('https://evil.test')),
     ).toBe(true);
   });
 
-  it('rejects missing origin when allowed origins are configured', () => {
-    const guard = createGuard([
-      'https://wallet-dev-stage.oceanenterprise.io',
-    ]);
+  it('rejects a missing origin on protected routes', () => {
+    const guard = createGuard(
+      ['https://wallet-dev-stage.oceanenterprise.io'],
+      false,
+    );
 
     expect(() =>
       guard.canActivate(createContext()),
     ).toThrow(ForbiddenException);
   });
 
-  it('rejects disallowed origins', () => {
-    const guard = createGuard([
-      'https://wallet-dev-stage.oceanenterprise.io',
-    ]);
+  it('rejects disallowed origins on protected routes', () => {
+    const guard = createGuard(
+      ['https://wallet-dev-stage.oceanenterprise.io'],
+      false,
+    );
 
     expect(() =>
       guard.canActivate(createContext('https://evil.test')),

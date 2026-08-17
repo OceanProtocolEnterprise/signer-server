@@ -135,12 +135,20 @@ ALLOWED_ORIGINS=['https://market-git-feat-stage-ocean-enterprise.vercel.app','ht
 
 PORT=3001
 NODE_ENV=development
+
+# Optional: enable HTTPS when both certificate paths are configured
+HTTP_CERT_PATH=./certs/cert.pem
+HTTP_KEY_PATH=./certs/key.pem
 ```
 
 `ALLOWED_ORIGINS` is optional. When unset, origin checks are disabled.
 When set, use an array of origins.
-Requests without a matching `Origin` header are rejected with `403`
-before JWT validation.
+Requests to protected routes without a matching `Origin` header are
+rejected with `403` before JWT validation. Routes marked with
+`@Public()`, including `/api/v1/health`, bypass origin and JWT checks.
+
+`HTTP_CERT_PATH` and `HTTP_KEY_PATH` are optional. Set both to enable HTTPS
+directly in the signer server.
 
 ---
 
