@@ -13,5 +13,5 @@ services:
     environment:
       SIGNER_MODE: local
     volumes:
-      - ./certs:/etc/ssl/certs:ro
+      - ../../certs:/etc/ssl/certs:ro
     restart: unless-stopped

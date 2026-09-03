@@ -46,7 +46,7 @@ services:
     environment:
       SIGNER_MODE: vault
     volumes:
-      - ./certs:/etc/ssl/certs:ro
+      - ../../certs:/etc/ssl/certs:ro
       - openbao-tls:/etc/openbao/tls:ro
       - openbao-keys:/vault/keys:ro
     command:
