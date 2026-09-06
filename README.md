@@ -1,27 +1,88 @@
-# Signer Service
+# Signer Server
 
-Remote signing service built with NestJS for Ocean Enterprise. The service provides authenticated blockchain signing operations using Authentik JWT authentication and supports multiple chains through configurable RPC endpoints.
+Remote Web3 signing service for Ocean Enterprise.
 
----
+Signer Server provides an authenticated service boundary between Ocean Enterprise applications and blockchain signing keys. Instead of requiring applications to handle private keys directly, clients request signing operations from Signer Server. The service resolves the appropriate signer, performs the cryptographic operation, and returns or broadcasts the resulting signed payload.
 
-## Features
+The project is implemented in TypeScript with [NestJS](https://nestjs.com/) and is designed for containerized deployment.
 
-- Authentik JWT authentication
-- Remote message signing
-- Remote transaction signing and broadcasting
-- Multi-chain support
-- Swagger API documentation
-- Docker support
-- Unit tests
-- End-to-end tests
-- ESLint + Prettier
-- TypeScript strict mode
-- GitHub Actions CI/CD
-- CodeQL security scanning
+> **Security-sensitive component:** Signer Server handles blockchain signing operations and may have access to private-key material depending on the configured key-storage mode. Review the deployment and security documentation before using it in a production environment.
 
 ---
 
-# Architecture
+## Table of Contents
+
+- [Purpose](#purpose)
+- [Motivation](#motivation)
+- [Objectives](#objectives)
+- [Scope](#scope)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Signing and Key Management](#signing-and-key-management)
+- [Authentication and Authorization](#authentication-and-authorization)
+- [Supported Operations](#supported-operations)
+- [Quick Start for Development](#quick-start-for-development)
+- [Deployment](#deployment)
+- [Configuration](#configuration)
+- [API Documentation](#api-documentation)
+- [Development](#development)
+- [Testing and Quality](#testing-and-quality)
+- [Security](#security)
+- [Contributing](#contributing)
+- [Governance and Support](#governance-and-support)
+- [Project Status](#project-status)
+
+---
+
+## Purpose
+
+Ocean Enterprise components need to perform blockchain operations such as signing messages and submitting transactions. Directly embedding private keys in every application increases operational complexity and expands the number of places where sensitive key material must be handled.
+
+Signer Server provides a Web3 signer abstraction.
+
+Applications interact with a service API instead of implementing key handling and signing logic themselves. This separates application functionality from key storage and provides a common integration point for authentication, chain configuration, signing, and transaction submission.
+
+At a high level:
+<img src="docs/public/SignerServerHighLevelDiagram.png">
+
+Signer Server is intended to act as a dedicated signing component in the Ocean Enterprise software stack.
+
+---
+
+## Motivation
+
+A shared signer service addresses several problems that otherwise have to be solved independently by each application:
+
+- applications do not need to implement their own blockchain signing layer;
+- signing behavior can be exposed through one consistent API;
+- blockchain RPC endpoints can be configured centrally;
+- authentication can be enforced before a signing operation is accepted;
+- private-key handling can be isolated from application business logic;
+- key-storage mechanisms can evolve without changing every application that consumes signing functionality;
+- signing operations can be deployed and operated as a separate security boundary.
+
+The abstraction is especially useful where multiple Ocean Enterprise services need blockchain identities but should not all manage private keys independently.
+
+---
+
+## Objectives
+
+Signer Server aims to provide:
+
+1. **A consistent signing API** for Ocean Enterprise services.
+2. **Remote message signing** for blockchain identities.
+3. **Transaction signing and broadcasting** through configured RPC endpoints.
+4. **Authenticated access** using Authentik-issued JWTs.
+5. **Multi-chain configuration** without embedding RPC details in consuming applications.
+6. **Pluggable key handling**, allowing deployments to separate development-oriented local key configuration from external secure key storage.
+7. **Container-based deployment** suitable for integration into the Ocean Enterprise stack.
+8. **Testable and maintainable implementation** with linting, type checking, automated tests, and security scanning.
+
+---
+
+## Directory Structure
+
+The application follows a modular NestJS architecture.
 
 ```text
 src/
@@ -55,104 +116,86 @@ test/
 
 ---
 
-# Authentication
+## Signing and Key Management
 
-All API endpoints are protected by Authentik JWT authentication through a global guard.
+Signer Server separates the API used by applications from the mechanism used to provide signing keys.
 
-The guard validates:
+The deployment documentation in [`/docs`](./docs/) is the authoritative source for configuring the supported deployment and key-storage modes.
 
-- JWT signature
-- JWKS endpoint
-- Issuer
-- Audience
-- `upstream_idp` claim matches `UPSTREAM_IDP`
+A deployment may use different key-management approaches depending on its environment. Development-oriented configurations should be treated differently from production key storage.
 
-Public routes can be marked with the `@Public()` decorator.
+### Security Principle
+
+Calling applications should interact with Signer Server by signer or wallet identity and should not need access to the underlying private key.
 
 ---
 
-# Environment Variables
+## Authentication and Authorization
 
-Copy `.env.example` to `.env`, then configure one signer mode. The Compose files
-override `SIGNER_MODE`; direct Node.js deployments read it from `.env`.
+Protected API endpoints use Authentik JWT authentication.
 
-For environment-backed keys:
+The authentication layer validates the token configuration, including:
 
-```env
-SIGNER_MODE=local
-PRIVATE_KEYS=[{"walletId":1,"key":"0x..."}]
+- JWT signature;
+- JWKS endpoint;
+- issuer;
+- audience;
+- configured upstream identity provider.
+
+The current configuration uses the following Authentik-related environment variables:
+
+```text
+AUTHENTIK_JWKS_URI
+AUTHENTIK_ISSUER
+AUTHENTIK_AUDIENCE
+UPSTREAM_IDP
 ```
 
-For OpenBao-backed keys:
+Protected requests use:
 
-```env
-SIGNER_MODE=vault
-VAULT_URL=http://openbao:8200
-VAULT_TOKEN=<VAULT_TOKEN>
-VAULT_ETHEREUM_MOUNT=ethereum
-VAULT_KV_STORE_PATH=secret
-VAULT_TIMEOUT_MS=10000
+```http
+Authorization: Bearer <jwt>
 ```
 
-Both modes require the shared service configuration:
+Public endpoints can be explicitly marked as public by the application.
 
-```env
-NODE_URI_MAP=[
-  {
-    "11155111": {
-      "key": "https://eth-sepolia.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
-      "multiplier": 3
-    }
-  },
-  {
-    "11155420": {
-      "key": "https://opt-sepolia.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
-      "multiplier": 2
-    }
-  },
-  {
-    "10": {
-      "key": "https://opt-mainnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
-      "multiplier": 1.5
-    }
-  },
-  {
-    "1": {
-      "key": "https://eth-mainnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
-      "multiplier": 2
-    }
-  }
-]
+The health endpoint is public.
 
-If `multiplier` is omitted, the service uses built-in defaults for these chains:
-Sepolia `11155111` = `3`, OP Sepolia `11155420` = `2`, OP Mainnet `10` = `1.5`, Ethereum Mainnet `1` = `2`.
+### Origin restrictions
 
-AUTHENTIK_JWKS_URI=https://example.com/jwks/
-AUTHENTIK_ISSUER=https://example.com/
-AUTHENTIK_AUDIENCE=client-id
-UPSTREAM_IDP=participant-idp
-ALLOWED_ORIGINS=['https://market-git-feat-stage-ocean-enterprise.vercel.app','https://wallet-dev-stage.oceanenterprise.io']
+`ALLOWED_ORIGINS` can be configured to restrict protected requests to expected application origins.
 
-PORT=3001
-NODE_ENV=development
-
-# Optional: enable HTTPS when both certificate paths are configured
-HTTP_CERT_PATH=./certs/cert.pem
-HTTP_KEY_PATH=./certs/key.pem
-```
-
-`ALLOWED_ORIGINS` is optional. When unset, origin checks are disabled.
-When set, use an array of origins.
-Requests to protected routes without a matching `Origin` header are
-rejected with `403` before JWT validation. Routes marked with
-`@Public()`, including `/api/v1/health`, bypass origin and JWT checks.
-
-`HTTP_CERT_PATH` and `HTTP_KEY_PATH` are optional. Set both to enable HTTPS
-directly in the signer server.
+When origin restrictions are enabled, configure only trusted Ocean Enterprise application origins.
 
 ---
 
-# Installation
+## Supported Operations
+
+The service currently exposes operations under `/api/v1`.
+
+| Method | Endpoint                    | Purpose                                                      |
+| ------ | --------------------------- | ------------------------------------------------------------ |
+| `GET`  | `/api/v1/address`           | Return the configured signer address                         |
+| `GET`  | `/api/v1/nonce`             | Return nonce information required for transaction operations |
+| `GET`  | `/api/v1/transaction/:hash` | Retrieve transaction information                             |
+| `POST` | `/api/v1/sign-message`      | Sign a message                                               |
+| `POST` | `/api/v1/send-transaction`  | Sign and submit a transaction                                |
+| `GET`  | `/api/v1/health`            | Service health check                                         |
+
+For request and response schemas, use the running Swagger/OpenAPI documentation.
+
+---
+
+## Quick Start for Development
+
+> This section is for local development. For an operational deployment, use the documentation in [`/docs`](./docs/).
+
+### Prerequisites
+
+- Node.js version compatible with the repository
+- npm
+- access to the required blockchain RPC endpoint(s)
+- an Authentik configuration for authenticated API testing
 
 Install dependencies:
 
@@ -160,9 +203,13 @@ Install dependencies:
 npm install
 ```
 
----
+Create a local environment file:
 
-# Development
+```bash
+cp .env.example .env
+```
+
+Configure the required development values in `.env`.
 
 Run in watch mode:
 
@@ -170,13 +217,13 @@ Run in watch mode:
 npm run start:dev
 ```
 
-Application:
+The default API base URL is:
 
 ```text
 http://localhost:3001/api/v1
 ```
 
-Swagger:
+Swagger is available at:
 
 ```text
 http://localhost:3001/api
@@ -184,27 +231,158 @@ http://localhost:3001/api
 
 ---
 
-# Code Quality
+## Deployment
 
-Lint project:
+Production and Docker-based deployment procedures are intentionally maintained outside the root README.
+
+See:
+
+### Signer Server deployment documentation
+
+For signer server deployment, these are available procedures:
+
+- [Signer server mode `vault`](./docs/vault-signer-server-deployment.md) which describes docker compose deployment instructions from [here](./docker-compose/vault/)
+- [Signer server mode `local`](./docs/local-signer-server-deployment.md) which describes docker compose deployment instructions from [here](./docker-compose/local/)
+
+### Development-only Docker usage
+
+For basic local container testing, the repository also provides Docker support.
+
+Build:
+
+```bash
+docker build -t signer-server .
+```
+
+Run:
+
+```bash
+docker run \
+  --env-file .env \
+  -p 8443:3001 \
+  signer-server
+```
+
+For the complete supported Compose deployment, follow [`/docs`](./docs/) rather than relying on the development example above.
+
+---
+
+## Configuration
+
+Configuration is supplied through environment variables.
+
+Start from:
+
+```bash
+cp .env.example .env
+```
+
+The main configuration groups are shown below.
+
+### Blockchain configuration
+
+`NODE_URI_MAP` maps supported chain IDs to RPC endpoints and optional transaction configuration.
+
+Example structure:
+
+```json
+[
+  {
+    "11155111": {
+      "key": "https://<ethereum-sepolia-rpc>",
+      "multiplier": 3
+    }
+  }
+]
+```
+
+Do not commit provider API keys.
+
+### Authentication configuration
+
+```text
+AUTHENTIK_JWKS_URI
+AUTHENTIK_ISSUER
+AUTHENTIK_AUDIENCE
+UPSTREAM_IDP
+```
+
+### Application configuration
+
+```text
+PORT
+NODE_ENV
+ALLOWED_ORIGINS
+SIGNER_SERVER_PORT
+```
+
+---
+
+## API Documentation
+
+When Signer Server is running, Swagger/OpenAPI documentation is available at:
+
+```text
+/api
+```
+
+With the default local development configuration:
+
+```text
+http://localhost:3001/api
+```
+
+Use the API documentation as the reference for request payloads and response schemas.
+
+---
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run in development mode:
+
+```bash
+npm run start:dev
+```
+
+Build:
+
+```bash
+npm run build
+```
+
+Run the production build:
+
+```bash
+npm run start:prod
+```
+
+### Code quality
+
+Lint:
 
 ```bash
 npm run lint
 ```
 
-Auto-fix lint issues:
+Automatically fix supported lint findings:
 
 ```bash
 npm run lint:fix
 ```
 
-Format code:
+Format:
 
 ```bash
 npm run format
 ```
 
-Type checking:
+Type check:
 
 ```bash
 npm run typecheck
@@ -212,11 +390,9 @@ npm run typecheck
 
 ---
 
-# Testing
+## Testing and Quality
 
-## Unit Tests
-
-Run:
+### Unit tests
 
 ```bash
 npm test
@@ -228,277 +404,23 @@ Watch mode:
 npm run test:watch
 ```
 
----
-
-## End-to-End Tests
-
-Run:
+### End-to-end tests
 
 ```bash
 npm run test:e2e
 ```
 
-Current e2e suite validates:
-
-- JWT protection
-- Unauthorized access rejection
-- Public endpoints
-- Controller integration
-
----
-
-## Coverage
-
-Generate coverage report:
+### Coverage
 
 ```bash
 npm run test:cov
 ```
 
-Coverage output:
+The repository CI currently enforces coverage thresholds for statements, branches, functions, and lines.
 
-```text
-coverage/
-```
+### Local verification before a pull request
 
-Current CI requires:
-
-```text
-Statements: 70%
-Branches: 70%
-Functions: 70%
-Lines: 70%
-```
-
-Configured in:
-
-```json
-coverageThreshold
-```
-
-inside `package.json`.
-
----
-
-# Build
-
-Before building, the project automatically performs:
-
-1. ESLint validation
-2. TypeScript type checking
-
-Build command:
-
-```bash
-npm run build
-```
-
-Equivalent flow:
-
-```bash
-npm run lint
-npm run typecheck
-nest build
-```
-
-Compiled output:
-
-```text
-dist/
-```
-
-Run production build:
-
-```bash
-npm run start:prod
-```
-
----
-
-# Docker
-
-Build image:
-
-```bash
-docker build -t signer-service .
-```
-
-Run container:
-
-```bash
-docker run \
-  --env-file .env \
-  -p 3001:3001 \
-  signer-service
-```
-
----
-
-# Docker Compose
-
-Two Compose files are provided for the supported deployment variants. Both load
-shared configuration from `.env` and override `SIGNER_MODE` for their respective
-storage mode.
-
-Start the environment-backed signer:
-
-```bash
-docker compose -f docker-compose.local.yml pull
-docker compose -f docker-compose.local.yml up -d
-```
-
-Start the OpenBao-backed signer:
-
-```bash
-docker compose -f docker-compose.vault.yml pull
-docker compose -f docker-compose.vault.yml up -d
-```
-
-Use the same file to view logs or stop a deployment:
-
-```bash
-docker compose -f docker-compose.local.yml logs -f signer-server
-docker compose -f docker-compose.local.yml down
-```
-
-See [Deployment](docs/deployment.md) for prerequisites, OpenBao networking, and
-configuration validation.
-
----
-
-# API Endpoints
-
-Protected routes require:
-
-```http
-Authorization: Bearer <jwt>
-```
-
-Endpoints:
-
-```http
-GET    /api/v1/address
-GET    /api/v1/nonce
-GET    /api/v1/transaction/:hash
-
-POST   /api/v1/sign-message
-POST   /api/v1/send-transaction
-```
-
-Swagger documentation:
-
-```text
-/api
-```
-
----
-
-# Adding New Modules
-
-Generate a module:
-
-```bash
-nest g module organization
-```
-
-Generate a controller:
-
-```bash
-nest g controller organization
-```
-
-Generate a service:
-
-```bash
-nest g service organization
-```
-
-Example future modules:
-
-```text
-src/
-├── organization/
-├── wallet/
-├── vault/
-├── policies/
-├── audit/
-└── signer/
-```
-
-Each module should contain:
-
-```text
-module
-controller
-service
-dto
-interfaces
-tests
-```
-
----
-
-# CI/CD
-
-GitHub Actions automatically run on:
-
-- Pull Requests to main
-- Pushes to main
-- Pushes to develop
-- Pushes to feat/\*\* branches
-
-Pipeline stages:
-
-```text
-Install
- ↓
-Lint
- ↓
-Type Check
- ↓
-Build
- ↓
-Unit Tests
- ↓
-E2E Tests
- ↓
-Coverage
-```
-
-Workflow:
-
-```text
-.github/workflows/ci.yml
-```
-
----
-
-# Security Scanning
-
-CodeQL runs:
-
-- On push to main
-- On push to develop
-- On pull requests
-- Weekly schedule
-
-Workflow:
-
-```text
-.github/workflows/codeql.yml
-```
-
-CodeQL performs:
-
-- Security analysis
-- Vulnerability detection
-- TypeScript code scanning
-
----
-
-# Local Verification Checklist
-
-Before opening a Pull Request:
+Run:
 
 ```bash
 npm run lint
@@ -507,10 +429,73 @@ npm test
 npm run test:e2e
 npm run test:cov
 npm run build
-docker compose -f docker-compose.local.yml config --quiet
-docker compose -f docker-compose.vault.yml config --quiet
 ```
 
-Everything should pass before merging.
+If your change affects containerization or deployment, also validate the relevant Docker/Compose workflow described under [`/docs`](./docs/).
 
 ---
+
+## Security
+
+Signer Server is a security-sensitive service because successful requests can authorize blockchain signatures and transactions.
+
+### Deployment requirements
+
+- use HTTPS/TLS in production;
+- protect Authentik, Signer Server, and key-storage service endpoints from unnecessary public exposure;
+- use a secure key-storage mode for production deployments;
+- restrict access using Authentik and the expected audience/issuer configuration;
+- configure trusted origins when browser-based clients access the service;
+- protect RPC credentials and API keys;
+- rotate compromised credentials and keys according to the deployment runbook;
+- monitor service and key-store logs;
+- keep dependencies and container images updated.
+
+---
+
+## Contributing
+
+Contributions are welcome through GitHub issues and pull requests.
+
+Before submitting a change:
+
+1. search existing issues and pull requests;
+2. create or reference an issue where appropriate;
+3. keep changes focused and documented;
+4. add or update tests;
+5. run the local verification commands;
+6. update `/docs` when behavior, configuration, security assumptions, or deployment changes;
+7. avoid committing secrets or real private keys.
+
+Pull requests should clearly describe:
+
+- the problem being solved;
+- the proposed change;
+- security impact;
+- configuration or deployment impact;
+- test coverage;
+- backward-compatibility considerations.
+
+For substantial architectural or security-sensitive changes, open an issue for discussion before implementation.
+
+---
+
+## Governance and Support
+
+Project collaboration takes place through the GitHub repository:
+
+- **Issues** — bugs, feature requests, and technical discussion
+- **Pull requests** — code and documentation contributions
+- **Security reporting** — follow the repository security policy when available
+
+Repository:
+
+<https://github.com/OceanProtocolEnterprise/signer-server>
+
+The project should maintain explicit governance, security-reporting, contribution, and licensing documentation as it matures, following OpenSSF project guidance.
+
+---
+
+## Related Documentation
+
+- [Deployment and operations](./docs/)
