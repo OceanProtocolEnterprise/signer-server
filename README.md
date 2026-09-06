@@ -80,7 +80,12 @@ Signer Server aims to provide:
 
 ---
 
-## Directory Structure
+## Class Diagram
+
+The class-oriented view below illustrates the Marketplace and Signer Server class structures and their communication.
+<img src="docs/public/SignerAbstraction-ClassDiagram.png">
+
+### Directory Structure
 
 The application follows a modular NestJS architecture.
 
