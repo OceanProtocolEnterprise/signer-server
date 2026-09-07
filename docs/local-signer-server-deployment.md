@@ -31,15 +31,16 @@ cp .env.example .env
 | `PORT`               | ✅ Yes   | `3001`                                                                               | Internal port mapping (container always listens on `3001`)                      |
 | `PRIVATE_KEYS`       | ✅ Yes   | `[{"walletId":1,"key":"0x..."}, {"walletId":2,"key":"0x..."}]`                       | JSON array of wallet private keys, each with a `walletId` and hex-encoded `key` |
 
-## Operations
 
-Start the deployment:
+
+3. Start the deployment:
 
 ```bash
 cd signer-server/
 docker compose -f docker-compose/local/docker-compose.yml up -d
 ```
 
+## Operations
 If you want to validate configuration without starting a container:
 
 ```bash
