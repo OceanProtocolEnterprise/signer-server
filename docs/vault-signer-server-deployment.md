@@ -34,36 +34,33 @@ openssl req -x509 -newkey rsa:4096 -keyout ./openbao/certs/tls.key -out ./openba
 2. Copy the environment template `.env.example` in `.env` and replace every placeholder:
 
 ```bash
+cd signer-server/docker-compose/local/
 cp .env.example .env
 ```
 
 ### Environment Configuration
 
-| Variable               | Required    | Example / Default                                                                    | Description                                                |
-| ---------------------- | ----------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| `NODE_URI_MAP`         | ✅ Yes      | `[{"11155111":{"key":"https://eth-sepolia.g.alchemy.com/v2/<key>","multiplier":3}}]` | Map of node URIs for the service                           |
-| `AUTHENTIK_JWKS_URI`   | ✅ Yes      | `https://ocean-node-vm1-stage.oceanenterprise.io:9443/application/o/oe-market/jwks/` | JWKS endpoint URI for Authentik                            |
-| `AUTHENTIK_ISSUER`     | ✅ Yes      | `https://ocean-node-vm1-stage.oceanenterprise.io:9443/application/o/oe-market/`      | Issuer URL for Authentik JWT validation                    |
-| `AUTHENTIK_AUDIENCE`   | ✅ Yes      |                                                                                      | Expected audience claim for JWT tokens                     |
-| `SIGNER_PORT`          | ✅ Yes      | `8443`                                                                               | HTTPS Host port mapping                                    |
-| `PORT`                 | ✅ Yes      | `3001`                                                                               | Internal port mapping (container always listens on `3001`) |
-| `VAULT_URL`            | ✅ Yes      | `https://openbao:8200`                                                               | Base URL OpenBao instance                                  |
-| `VAULT_ETHEREUM_MOUNT` | ✅ Yes      | `ethereum`                                                                           | Vault mount path for the Ethereum secrets engine           |
-| `VAULT_KV_STORE_PATH`  | ✅ Yes      | `secret`                                                                             | Vault KV store mount path                                  |
-| `VAULT_TIMEOUT_MS`     | ✅ Yes      | `10000`                                                                              | Vault request timeout in milliseconds                      |
+| Variable               | Required | Example / Default                                                                    | Description                                                |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `NODE_URI_MAP`         | ✅ Yes   | `[{"11155111":{"key":"https://eth-sepolia.g.alchemy.com/v2/<key>","multiplier":3}}]` | Map of node URIs for the service                           |
+| `AUTHENTIK_JWKS_URI`   | ✅ Yes   | `https://ocean-node-vm1-stage.oceanenterprise.io:9443/application/o/oe-market/jwks/` | JWKS endpoint URI for Authentik                            |
+| `AUTHENTIK_ISSUER`     | ✅ Yes   | `https://ocean-node-vm1-stage.oceanenterprise.io:9443/application/o/oe-market/`      | Issuer URL for Authentik JWT validation                    |
+| `AUTHENTIK_AUDIENCE`   | ✅ Yes   |                                                                                      | Expected audience claim for JWT tokens                     |
+| `SIGNER_PORT`          | ✅ Yes   | `8443`                                                                               | HTTPS Host port mapping                                    |
+| `PORT`                 | ✅ Yes   | `3001`                                                                               | Internal port mapping (container always listens on `3001`) |
+| `VAULT_URL`            | ✅ Yes   | `https://openbao:8200`                                                               | Base URL OpenBao instance                                  |
+| `VAULT_ETHEREUM_MOUNT` | ✅ Yes   | `ethereum`                                                                           | Vault mount path for the Ethereum secrets engine           |
+| `VAULT_KV_STORE_PATH`  | ✅ Yes   | `secret`                                                                             | Vault KV store mount path                                  |
+| `VAULT_TIMEOUT_MS`     | ✅ Yes   | `10000`                                                                              | Vault request timeout in milliseconds                      |
 
-
-
-
-
-3. Start the deployment:
+3. Start the deployment in the same directory `signer-server/docker-compose/vault/`:
 
 ```bash
-cd signer-server/
-docker compose -f docker-compose/vault/docker-compose.yml up -d
+docker compose up -d
 ```
 
 ## Operations
+
 To check `signer-server` logs:
 
 ```bash

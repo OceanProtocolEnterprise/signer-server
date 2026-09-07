@@ -16,6 +16,8 @@ service on host port `8443` by default, and load the container environment from
 2. Copy the environment template `.env.example` in `.env` and replace every placeholder:
 
 ```bash
+cd signer-server/docker-compose/local/
+
 cp .env.example .env
 ```
 
@@ -31,16 +33,14 @@ cp .env.example .env
 | `PORT`               | ✅ Yes   | `3001`                                                                               | Internal port mapping (container always listens on `3001`)                      |
 | `PRIVATE_KEYS`       | ✅ Yes   | `[{"walletId":1,"key":"0x..."}, {"walletId":2,"key":"0x..."}]`                       | JSON array of wallet private keys, each with a `walletId` and hex-encoded `key` |
 
-
-
-3. Start the deployment:
+3. Start the deployment in the same directory `signer-server/docker-compose/local/`:
 
 ```bash
-cd signer-server/
-docker compose -f docker-compose/local/docker-compose.yml up -d
+docker compose up -d
 ```
 
 ## Operations
+
 If you want to validate configuration without starting a container:
 
 ```bash
