@@ -11,9 +11,8 @@ service on host port `8443` by default, and load the container environment from
 
 ## Prerequisites
 
-TBD: SSL certifications for HTTPS communication
-
-Install `openssl` tool on server dedicated to host Signer Server with OpenBAO vault.
+- SSL certificates for HTTPS communication
+- Install the `openssl` tool on the server dedicated to hosting the Signer Server with OpenBAO vault.
 
 ## Steps
 
