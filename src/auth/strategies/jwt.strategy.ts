@@ -30,7 +30,7 @@ type AuthentikJwtPayload = {
   preferred_username?: string;
   nickname?: string;
   groups?: string[];
-  signerService?: string;
+  signerServer?: string;
   walletId?: number;
   azp?: string;
   uid?: string;
