@@ -10,15 +10,22 @@ import * as request from 'supertest';
 import { ConfigService } from '@nestjs/config';
 
 export const isVaultAvailable = (): boolean => {
+  // Check if we're in CI (GitHub Actions)
+  const isGitHubActions = !!process.env.GITHUB_ACTIONS;
+
+  // In CI, we assume Vault is available via docker compose
+  if (isGitHubActions) {
+    return true;
+  }
+
+  // For local development, check if Vault config is present
   const hasVaultConfig = !!(
     process.env.VAULT_URL &&
     process.env.VAULT_TOKEN &&
     process.env.SIGNER_MODE === 'vault'
   );
 
-  const isGitHubActions = !!process.env.GITHUB_ACTIONS;
-
-  return hasVaultConfig && !isGitHubActions;
+  return hasVaultConfig;
 };
 
 export const isGitHubActions = (): boolean => {
@@ -146,7 +153,7 @@ export class TestApp {
             configOverride?.openBao || {
               url:
                 process.env.VAULT_URL ||
-                'http://127.0.0.1:8200',
+                'https://localhost:8200',
               token:
                 process.env.VAULT_TOKEN || 'test-token',
               ethereumMount: 'ethereum',
@@ -243,7 +250,7 @@ export class TestApp {
         original(
           this.withApiPrefix(path),
           ...args,
-        )) as typeof agent[typeof method];
+        )) as (typeof agent)[typeof method];
     });
 
     return agent;
